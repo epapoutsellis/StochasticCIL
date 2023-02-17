@@ -1,27 +1,26 @@
 from cil.optimisation.algorithms import Algorithm
 import numpy as np
 import logging
-from cil.optimisation.algorithms import ISTA
+
 
 class ProxSkip(Algorithm):
+    
 
     r"""Proximal Skip  (ProxSkip) algorithm, see "ProxSkip: Yes! Local Gradient Steps Provably Lead to Communication Acceleration! Finally!†"
     
-
         Parameters
         ----------
 
         initial : DataContainer
-                  Initial point for the ProxSkip algorithm. Default = 0
+                  Initial point for the ProxSkip algorithm. 
         f : Function
             A smooth function with Lipschitz continuous gradient.
         g : Function
             A convex function with a "simple" proximal.
         prob : positive :obj:`float`
-             Probability to skip the proximal step. If :code:`prob=1`, proximal step is used in every iteration.
+             Probability to skip the proximal step. If :code:`prob=1`, proximal step is used in every iteration.             
         step_size : positive :obj:`float`
-            Step size for the ProxSkip algorithm.
-            
+            Step size for the ProxSkip algorithm and is equal to 1./L where L is the  Lipschitz constant for the gradient of f.          
             
      """
 
@@ -57,8 +56,7 @@ class ProxSkip(Algorithm):
         self.no_use_prox = 0
 
         logging.info("{} configured".format(self.__class__.__name__, ))
-              
-                    
+                                  
 
     def update(self):
         r""" Performs a single iteration of the ProxSkip algorithm        
@@ -66,10 +64,9 @@ class ProxSkip(Algorithm):
         
         self.f.gradient(self.x, out=self.xhat_new)
         self.xhat_new -= self.ht
-        self.xhat_new *=-self.step_size
-        self.xhat_new.add(self.x, out=self.xhat_new)
+        self.x.sapyb(1., self.xhat_new, -self.step_size, out=self.xhat_new)
 
-        theta = np.random.choice([1,0], p=[prob,1-prob])
+        theta = np.random.choice([1,0], p=[self.prob,1-self.prob])
 
         if theta==1:
             # Proximal step is used
@@ -81,10 +78,10 @@ class ProxSkip(Algorithm):
             self.no_use_prox+=1
             
         # update the offset
-        self.ht_new = self.ht + (self.prob/self.step_size)*(self.x_new - self.xhat_new)
+        self.ht.sapyb(1., (self.x_new - self.xhat_new), (self.prob/self.step_size), out=self.ht)
         
         self.x.fill(self.x_new)
-        self.ht.fill(self.ht_new)        
+      
                   
     def update_objective(self):
 
