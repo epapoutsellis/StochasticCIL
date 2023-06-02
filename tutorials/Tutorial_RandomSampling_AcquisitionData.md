@@ -28,7 +28,7 @@ data.reorder('astra')
 
 
 ```python
-print("Acquisitionn Data shape", data.shape)
+print("Acquisition Data shape", data.shape)
 print("Acquisition Data geometry labels", data.geometry.dimension_labels)
 ```
 
