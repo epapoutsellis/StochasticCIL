@@ -324,7 +324,7 @@ plt.show()
 ```
 
 
-![png](imgs/Tutorial_Stochastic_CIL_SIRF_13_0.png)
+![png](imgs/ orial_Stochastic_CIL_SIRF_13_0.png)
 
 
 
