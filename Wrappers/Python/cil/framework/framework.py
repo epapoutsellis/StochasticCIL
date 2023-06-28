@@ -26,7 +26,8 @@ import weakref
 import logging
 
 from cil.utilities.multiprocessing import NUM_THREADS
-from cil.optimisation.utilities import RandomSampling, SequentialSampling
+from cil.optimisation.utilities import RandomSampling, SequentialSampling, HermanMeyerSampling
+
 # check for the extension
 
 if platform.system() == 'Linux':
@@ -3376,6 +3377,8 @@ class AcquisitionData(DataContainer):
                     method = RandomSampling(len(self.geometry.angles), num_subsets, replace=False, seed=10)    
                 elif method == "ordered":
                     method = SequentialSampling(len(self.geometry.angles), num_subsets)
+                elif method == "herman_meyer":
+                    method = HermanMeyerSampling(len(self.geometry.angles), num_subsets)                    
                 else:
                     raise ValueError('Only random and ordered splitting methods are implemented by default. Use SequentialSampling and RandomSampling for advanced splitting methods')
 
