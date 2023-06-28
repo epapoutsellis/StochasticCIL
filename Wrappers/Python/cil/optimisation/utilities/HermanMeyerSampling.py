@@ -33,11 +33,14 @@ class HermanMeyerSampling:
         if (check_prime(self.num_batches) or check_prime(self.num_indices)):
             raise ValueError("Herman Meyer sampling requires a non-prime number for number of views and subsets.")            
 
+        self.batch_size = self.num_indices//self.num_batches
         self.indices_used = []
         self.index = 0    
 
-        if not self.num_indices%self.num_batches==0 :
-            logging.warning("Batch size is not constant. ")                              
+        self.equal_size_batches = self.num_indices%self.num_batches==0 
+
+        if not self.equal_size_batches :
+            raise ValueError("Batches of equal size is required")                            
 
         # initial ordered list
         tmp_list = [i for i in range(self.num_indices)]  
@@ -51,6 +54,9 @@ class HermanMeyerSampling:
 
         # reorder list based on hm_order
         self.partition_list = [splited_list[i] for i in hm_order]
+
+        # TODO remove and fix Seq+Rand Sampling
+        self.list_of_indices = [*self.partition_list]
 
 
     def __next__(self):
@@ -78,7 +84,25 @@ class HermanMeyerSampling:
         if self.index==len(self.partition_list):
             self.index=0            
 
-        return tmp_list       
+        return tmp_list  
+
+    def show_epochs(self, epochs):
+        
+        total_its = epochs * self.num_indices
+        for _ in range(total_its):
+            next(self)
+                    
+        if self.batch_size==1:
+            k = 0
+            for i in range(epochs):
+                print(" Epoch : {}, indices used : {} ".format(i, self.indices_used[k:k+self.num_indices]))    
+                k+=self.num_indices 
+            print("")   
+        else:
+            k=0
+            for i in range(epochs):
+                print(" Epoch : {}, batches used : {} ".format(i, self.indices_used[k:k+self.num_batches]))                 
+                k += self.num_batches             
 
 
 def prime_decomposition(n):
