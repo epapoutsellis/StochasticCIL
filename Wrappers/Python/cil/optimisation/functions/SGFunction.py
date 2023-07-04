@@ -32,6 +32,9 @@ class SGFunction(ApproximateGradientSumFunction):
         """ Returns the gradient of the selected function or batch of functions at :code:`x`. 
             The function or batch of functions is selected using the :meth:`~ApproximateGradientSumFunction.next_function`.
         """        
-        self.functions[function_num].gradient(x, out=out)            
-        out*=self.selection.num_batches
+        self.functions[function_num].gradient(x, out=out) 
+        out*=self.selection.num_batches        
+        if out is None:
+            return out           
+
 
