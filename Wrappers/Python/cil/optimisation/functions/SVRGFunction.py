@@ -85,7 +85,7 @@ class SVRGFunction(ApproximateGradientSumFunction):
             
             - Fist :code:`f.gradient` is called.
             - Then :code:`f.approximate_gradient` is called.
-            - The result is used to compute :math:`x^{k} - \gamma \tilde{\nabla}f(x_{k}` and the proximal if required by the algorithm used.
+            - The result is used to compute :math:`x^{k} - \gamma \tilde{\nabla}f(x_{k}` followed by the proximal if required.
                         
         """
 
