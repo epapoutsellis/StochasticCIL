@@ -20,20 +20,6 @@ class SVRGFunction(ApproximateGradientSumFunction):
         The probability of updating the full gradient in loopless SVRG.
     store_gradients : bool, optional
         Flag indicating whether to store gradients for each function.
-
-    Methods
-    -------
-    approximate_gradient(function_num, x, out)
-        Computes the approximate gradient for the given function index at point x.
-
-    update_memory(x)
-        Updates the memory for full gradient computation.
-
-    allocate_memory(x)
-        Allocates memory for intermediate variables.
-
-    free_memory()
-        Frees the allocated memory.
         
     """
     
@@ -62,6 +48,8 @@ class SVRGFunction(ApproximateGradientSumFunction):
                     self.update_prob =  1./self.update_frequency/self.num_functions                     
         else:            
             if self.update_frequency is None:
+
+                # TODO this is wrong
                 self.update_frequency = self.num_functions
 
         # flag for memory allocation
@@ -110,10 +98,10 @@ class SVRGFunction(ApproximateGradientSumFunction):
             
             if self.svrg_iter == 0:
                 # initialise data passes by one due to full gradient computation from update memory
-                self.data_passes[0] = 1
+                self.data_passes[0] = 1.
             else:
                 # increment by 1, since full gradient is computed again
-                self.data_passes.append(self.data_passes[-1] + 1)
+                self.data_passes.append(self.data_passes[-1] + 1.)
 
             # allocate memory for the difference between the gradient of selected function at iterate 
             # and the gradient at snapshot
@@ -124,13 +112,14 @@ class SVRGFunction(ApproximateGradientSumFunction):
             # implements the (L)SVRG inner loop
             
             self.functions[function_num].gradient(x, out=self.stoch_grad_at_iterate)
+            
             if self.store_gradients is True:
                 self.stoch_grad_at_iterate.sapyb(1., self.list_stored_gradients[function_num], -1., out=self.stochastic_grad_difference)         
             else:
                 self.stoch_grad_at_iterate.sapyb(1., self.functions[function_num].gradient(self.snapshot), -1., out=self.stochastic_grad_difference)         
 
             # only on gradient randomly selected is seen and appended it to data_passes    
-            self.data_passes.append(self.data_passes[-1]+1/self.num_functions)
+            self.data_passes.append(self.data_passes[-1] + round(1./self.num_functions,2))
 
         # full gradient is added to the stochastic grad difference    
         self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_snapshot, 1., out=out)
@@ -145,15 +134,14 @@ class SVRGFunction(ApproximateGradientSumFunction):
         Updates the memory for full gradient computation. If :code:`store_gradients==True`, the gradient of all functions is computed and stored.
         """        
 
-        if self.store_gradients is True:
-            
+        self.snapshot = x.copy()
+
+        if self.store_gradients is True:            
             self.list_stored_gradients = [ fi.gradient(self.snapshot) for fi in self.functions] 
             self.full_gradient_at_snapshot = sum(self.list_stored_gradients)
         else:
             self.full_gradient(x, out=self.full_gradient_at_snapshot)
             
-        self.snapshot = x.copy()
-
          
     def allocate_memory(self, x):
 

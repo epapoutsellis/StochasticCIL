@@ -8,11 +8,11 @@ class SAGFunction(ApproximateGradientSumFunction):
 
     """
 
-    def __init__(self, functions, selection=None, gradient_initial_point=None):
+    def __init__(self, functions, selection=None, memory_allocated=False,
+                    data_passes=None, gradient_initial_point=None):            
  
-        self.gradient_initial_point = gradient_initial_point
-        self.allocate_memory = False
-        super(SAGFunction, self).__init__(functions, selection = selection)
+        super(SAGFunction, self).__init__(functions, selection = selection, memory_allocated=memory_allocated,
+                    data_passes=data_passes, gradient_initial_point=gradient_initial_point)
 
     def approximate_gradient(self, function_num, x, out):
 
@@ -61,7 +61,7 @@ class SAGFunction(ApproximateGradientSumFunction):
 
         self.memory_allocated = True
     
-    def reset_memory(self):
+    def free_memory(self):
         """ Resets the memory from subset gradients and full gradient.
         """
         if self.memory_allocated == True:

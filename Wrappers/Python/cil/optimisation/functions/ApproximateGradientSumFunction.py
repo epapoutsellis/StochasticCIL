@@ -37,25 +37,21 @@ class ApproximateGradientSumFunction(SumFunction):
 
     """
     
-    def __init__(self, functions, selection=None):    
+    def __init__(self, functions, selection=None, memory_allocated=False,
+                    data_passes=None, initial=None):    
                         
-        self.functions_used = []   
         if selection is None:
             self.selection = RandomSampling.uniform(len(functions))
         else:
             self.selection = selection
+
+        self.functions_used = [] 
+        self.data_passes = data_passes
+        self.memory_allocated = memory_allocated
+        self.initial = initial
             
         super(ApproximateGradientSumFunction, self).__init__(*functions)            
-  
-    def __call__(self, x):
-
-        r"""Returns the value of the sum of functions at :math:`x`.		
-
-        .. math:: \sum_{i=1}^{n}(F_{i}(x)) = (F_{1}(x) + F_{2}(x) + ... + F_{n}(x))
-
-        """
-                		
-        return super(ApproximateGradientSumFunction, self).__call__(x)      
+       
         
     def full_gradient(self, x, out=None):
 
@@ -66,14 +62,14 @@ class ApproximateGradientSumFunction(SumFunction):
 
         """ Computes the approximate gradient for each selected function at :code:`x`."""      
         raise NotImplemented
-
+        
     def gradient(self, x, out=None):
 
         """ Computes the gradient for each selected function at :code:`x`."""   
         self.next_function()
 
         # single function 
-        if isinstance(self.function_num, numbers.Number):
+        if isinstance(self.function_num, numbers.Number):         
             return self.approximate_gradient(self.function_num, x, out=out)
         else:            
             raise ValueError("Batch gradient is not implemented")
@@ -85,3 +81,21 @@ class ApproximateGradientSumFunction(SumFunction):
         
         # append each function used at this iteration
         self.functions_used.append(self.function_num)
+
+    def allocate_memory(self):
+
+        raise NotImplementedError
+
+    def update_memory(self):
+
+        raise NotImplementedError
+
+    def free_memory(self):
+
+        raise NotImplementedError
+
+
+
+
+
+    

@@ -19,22 +19,51 @@ from cil.optimisation.functions import ApproximateGradientSumFunction
 
 class SGFunction(ApproximateGradientSumFunction):
 
-    r""" Stochastic Gradient Function (SGFunction) 
-    
-"""
+    """
+        Initialize the SGFunction.
+
+        Parameters:
+        ----------
+        functions: list
+            A list of functions.
+        selection: callable or None, optional
+            A callable object that selects the function or batch of functions to compute the gradient. If None, a random function will be selected.
+            
+     """
   
     def __init__(self, functions, selection=None):
 
-        super(SGFunction, self).__init__(functions, selection)
+        super(SGFunction, self).__init__(functions, selection, data_passes=[0])    
 
-    def approximate_gradient(self, function_num, x, out):
+    def approximate_gradient(self, function_num, x, out=None):
         
         """ Returns the gradient of the selected function or batch of functions at :code:`x`. 
             The function or batch of functions is selected using the :meth:`~ApproximateGradientSumFunction.next_function`.
-        """        
-        self.functions[function_num].gradient(x, out=out) 
-        out*=self.selection.num_batches        
+        """     
+
+        # flag to return or in-place computation
+        should_return=False
+
+        # compute gradient of randomly selected(function_num) function
         if out is None:
-            return out           
+            out = self.functions[function_num].gradient(x)
+            should_return=True
+        else:
+            self.functions[function_num].gradient(x, out = out) 
+
+        # scale wrt number of functions 
+        out*=self.num_functions
+
+        # update data passes
+        self.data_passes.append(self.data_passes[-1] + round(1./self.num_functions,5))
+        
+        if should_return:
+            return out         
+
+
+
+
+
+           
 
 
