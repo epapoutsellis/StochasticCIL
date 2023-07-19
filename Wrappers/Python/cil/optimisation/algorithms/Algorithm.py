@@ -84,10 +84,10 @@ class Algorithm(object):
         """Set up the logger if desired"""
         if fname:
             print("Will output results to: " +  fname)
-            handler = logging.FileHandler(fname)
+            self.handler = logging.FileHandler(fname)
             self.logger = logging.getLogger("obj_fn")
             self.logger.setLevel(logging.INFO)
-            self.logger.addHandler(handler)
+            self.logger.addHandler(self.handler)
     
     def max_iteration_stop_cryterion(self):
         '''default stop cryterion for iterative algorithm: max_iteration reached'''
@@ -282,16 +282,8 @@ class Algorithm(object):
         # if callback is None --> verbose is False
         # if is not None --> True if any callback has verbosity
         callback_verbose = any(cb.verbose for cb in callback) if callback else False
-
-        # if callback!=None:                        
-
-        #     # iterable callback
-        #     callback_headers = " "
-        #     for i in range(len(callback)):
-        #         if callback[i].verbose:
-        #             callback_headers += callback[i].callback_header()
         
-        # Print Headers
+        ######### Print Headers and Log  #########
         if verbose:
             msg_header = self.verbose_header(very_verbose)
             if callback_verbose:
@@ -299,13 +291,8 @@ class Algorithm(object):
                 msg_header += callback_headers               
             print (msg_header)
             if self.logger:
-                self.logger.info(msg_header)             
-
-
-            # if callback_verbose:
-                # out = callback.callback_header()
-            # msg_header += callback_headers
-            # print (msg_header)
+                self.logger.info(msg_header) 
+        #########################################
 
         if self.iteration == -1 and self.update_objective_interval>0:
             iterations+=1
@@ -326,6 +313,8 @@ class Algorithm(object):
                     for cb in callback:
                         cb(self)
 
+            ######### Print Algo information per update #########
+            ######### objective interval and Log       #########
             if verbose:
 
                 if (print_interval != 0 and self.iteration % print_interval == 0) or \
@@ -336,41 +325,23 @@ class Algorithm(object):
                     if callback_verbose:
                         callback_info_iters = " ".join(cb.callback_info_iter() for cb in callback if cb.verbose)
                         msg_per_interval += callback_info_iters
+
                     print(msg_per_interval)
                     if self.logger:
-                        self.logger.info(msg_per_interval)                    
+                        self.logger.info(msg_per_interval)                                   
 
-
-                    # if callback!=None:        
-                    #     for i in range(len(callback)):
-                    #         if callback[i].verbose:
-                    #             msg_per_interval += callback[i].callback_info_iter()                                
-
-                    # if callback_verbose:
-                        # out = callback.callback_info_iter()
-                        # msg_per_interval += out
-
-                    # print (msg_per_interval)
-
-        # fancy printing adds ----- at the end 
+        ######### Print bars '-' at the end of run algorithm and Log #########
         if verbose:
-            start = 3 # I don't understand why this
-            bars = ['-' for i in range(start+9+10+13+20)]
-            if callback_verbose:
-                bars = ['-' for i in range(start+9+10+13+20+20)]
-            if (very_verbose):
-                bars = ['-' for i in range(start+9+10+13+13+13+15)]
-            # print a nice ---- with proper length at the end
-            # print (functools.reduce(lambda x,y: x+y, bars, ''))
-            # out = "{}\n{}\n{}\n".format(functools.reduce(lambda x,y: x+y, bars, '') ,
-            #                             self.verbose_output(very_verbose),
-            #                             "Stop criterion has been reached.")
+            bars = ['-']*len(msg_header)
             out = "{}\n{}\n".format(functools.reduce(lambda x,y: x+y, bars, '') ,
                                         "Stop criterion has been reached.")            
             print (out)
             # Print to log file if desired
             if self.logger:
                 self.logger.info(out)
+                self.handler.close()
+
+        
 
             
     def verbose_output(self, verbose=False):
@@ -386,9 +357,6 @@ class Algorithm(object):
                  "{:.3f}".format(t), 
                  self.objective_to_string(verbose)
                )
-        # Print to log file if desired
-        # if self.logger:
-            # self.logger.info(out)
         return out
 
     def objective_to_string(self, verbose=False):
@@ -436,19 +404,6 @@ class Algorithm(object):
                                                       'Max {}'.format(self.iter_string),
                                                       'Time(s)/{}'.format(self.iter_string),
                                                       'Objective')
-
-            # old code          
-            # out = "{:>9} {:>10} {:>13} {:>20}\n".format(self.iter_string, 
-            #                                           'Max {}'.format(self.iter_string),
-            #                                           'Time/{}'.format(self.iter_string),
-            #                                           'Objective')
-            # out += "{:>9} {:>10} {:>13} {:>20}".format('', 
-            #                                           '',
-            #                                           '[s]',
-            #                                           '')
-        # Print to log file if desired
-        # if self.logger:
-            # self.logger.info(out)
 
         return out
 
