@@ -37,8 +37,7 @@ class ApproximateGradientSumFunction(SumFunction):
 
     """
     
-    def __init__(self, functions, selection=None, memory_allocated=False,
-                    data_passes=None, initial=None):    
+    def __init__(self, functions, selection=None, data_passes=None, initial=None):    
                         
         if selection is None:
             self.selection = RandomSampling.uniform(len(functions))
@@ -47,7 +46,6 @@ class ApproximateGradientSumFunction(SumFunction):
 
         self.functions_used = [] 
         self.data_passes = data_passes
-        self.memory_allocated = memory_allocated
         self.initial = initial
             
         super(ApproximateGradientSumFunction, self).__init__(*functions)            
