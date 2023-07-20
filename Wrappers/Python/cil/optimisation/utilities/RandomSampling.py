@@ -85,7 +85,7 @@ class RandomSampling():
     """
 
     
-    def __new__(cls, num_indices, num_batches=None, prob = None, replace = True, shuffle=True, batch_size = None, seed = None):
+    def __new__(cls, num_indices=None, num_batches=None, prob = None, replace = True, shuffle=True, batch_size = None, seed = None):
         
         cls.num_batches = num_batches
 
@@ -223,13 +223,3 @@ class RandomIndex(RandomSampling):
         self.indices_used.append(index_num)
 
         return index_num  
-
-if __name__=="__main__":
-
-    sq = RandomSampling(10,num_batches=10)
-    for i in range(10):
-        z = next(sq)
-        print(z)
-    # print(sq.indices_used)     
-        
-   
