@@ -33,7 +33,7 @@ class SGFunction(ApproximateGradientSumFunction):
   
     def __init__(self, functions, selection=None):
 
-        super(SGFunction, self).__init__(functions, selection, data_passes=[0])    
+        super(SGFunction, self).__init__(functions, selection, data_passes=[0.])    
 
     def approximate_gradient(self, function_num, x, out=None):
         
@@ -55,7 +55,7 @@ class SGFunction(ApproximateGradientSumFunction):
         out*=self.num_functions
 
         # update data passes
-        self.data_passes.append(self.data_passes[-1] + round(1./self.num_functions,5))
+        self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions,4))
         
         if should_return:
             return out         
