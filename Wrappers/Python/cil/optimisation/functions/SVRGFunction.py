@@ -25,9 +25,9 @@ class SVRGFunction(ApproximateGradientSumFunction):
     
 
     def __init__(self, functions, selection=None, update_frequency = None, 
-                 loopless = False, update_prob=None, store_gradients = False):
+                 loopless = False, update_prob=None, store_gradients = False, initial=None):
 
-        super(SVRGFunction, self).__init__(functions, selection)
+        super(SVRGFunction, self).__init__(functions, selection = selection, data_passes = [None], initial=initial)
 
         # update_frequency for SVRG
         self.update_frequency = update_frequency
@@ -48,8 +48,6 @@ class SVRGFunction(ApproximateGradientSumFunction):
                     self.update_prob =  1./self.update_frequency/self.num_functions                     
         else:            
             if self.update_frequency is None:
-
-                # TODO this is wrong
                 self.update_frequency = self.num_functions
 
         # flag for memory allocation
@@ -60,9 +58,9 @@ class SVRGFunction(ApproximateGradientSumFunction):
 
         # store the number of data/functions seen during the approximate gradient method up to the self.iter of the algorithm used               
         # example: SGFunction with 10 subsets self.data_passes = [0.1,...,0.5,...,0.9,1.0, 1.1,...]                                          
-        self.data_passes = [None]
+        # self.data_passes = [None]
 
-    def approximate_gradient(self, function_num, x, out):
+    def approximate_gradient(self, function_num, x, out=None):
 
         """
             Approximate gradient method is used in the proximal gradient algorithm class, i.e.
@@ -88,7 +86,7 @@ class SVRGFunction(ApproximateGradientSumFunction):
         if self.loopless:
             update_flag = np.random.uniform() < self.update_prob
         else:            
-            update_flag = ( np.isinf(self.update_frequency)==False and (self.svrg_iter % (self.update_frequency * self.num_functions)) == 0)
+            update_flag = ( np.isinf(self.update_frequency)==False and (self.svrg_iter % (self.update_frequency)) == 0)
 
         # check whether to update the memory based on the first iteration or the update frequency
         if self.svrg_iter == 0 or update_flag :
@@ -101,16 +99,15 @@ class SVRGFunction(ApproximateGradientSumFunction):
                 self.data_passes[0] = 1.
             else:
                 # increment by 1, since full gradient is computed again
-                self.data_passes.append(self.data_passes[-1] + 1.)
+                self.data_passes.append(round(self.data_passes[-1] + 1.,2))
 
             # allocate memory for the difference between the gradient of selected function at iterate 
             # and the gradient at snapshot
-            self.stochastic_grad_difference = x * 0.
-            
-        else:
+            # this allocates at the beginning of every update_flag: is wrong
+            # self.stochastic_grad_difference = x * 0.  
 
-            # implements the (L)SVRG inner loop
-            
+        else:
+            # implements the (L)SVRG inner loop            
             self.functions[function_num].gradient(x, out=self.stoch_grad_at_iterate)
             
             if self.store_gradients is True:
@@ -119,39 +116,41 @@ class SVRGFunction(ApproximateGradientSumFunction):
                 self.stoch_grad_at_iterate.sapyb(1., self.functions[function_num].gradient(self.snapshot), -1., out=self.stochastic_grad_difference)         
 
             # only on gradient randomly selected is seen and appended it to data_passes    
-            self.data_passes.append(self.data_passes[-1] + round(1./self.num_functions,2))
+            self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions,2))
 
-        # full gradient is added to the stochastic grad difference    
-        self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_snapshot, 1., out=out)
-
+        # full gradient is added to the stochastic grad difference 
         if out is None:
-            return out           
-
+            return self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_snapshot, 1.)
+        else:
+            self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_snapshot, 1., out=out)
+    
 
     def update_memory(self, x):
         
         """
         Updates the memory for full gradient computation. If :code:`store_gradients==True`, the gradient of all functions is computed and stored.
         """        
-
-        self.snapshot = x.copy()
+        if self.svrg_iter==0 and self.initial:
+            self.snapshot = self.initial
+        else:
+            self.snapshot = x.copy()
 
         if self.store_gradients is True:            
             self.list_stored_gradients = [ fi.gradient(self.snapshot) for fi in self.functions] 
             self.full_gradient_at_snapshot = sum(self.list_stored_gradients)
         else:
-            self.full_gradient(x, out=self.full_gradient_at_snapshot)
+            self.full_gradient(self.snapshot, out=self.full_gradient_at_snapshot)
             
          
     def allocate_memory(self, x):
 
         """ This method creates attributes and allocates memory required to run the SVRG algorithm.
         """
-
-        self.full_gradient_at_snapshot = x * 0.0        
+        
+        self.full_gradient_at_snapshot = x * 0.0                    
         self.stoch_grad_at_iterate = x * 0.0
         self.stoch_grad_at_snapshot = x * 0.0
-        
+        self.stochastic_grad_difference = x * 0. 
         self.memory_allocated = True 
         
     def free_memory(self):
