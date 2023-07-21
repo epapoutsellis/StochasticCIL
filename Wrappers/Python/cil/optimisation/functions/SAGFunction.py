@@ -41,10 +41,12 @@ class SAGFunction(ApproximateGradientSumFunction):
         should_return=False
         if out is None:
             res = x*0. # for CIL/SIRF compatibility
-            self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_iterate, 1., out=res)
+            # due to the convention that we follow: without the 1/n factor
+            self.stochastic_grad_difference.sapyb(1., self.full_gradient_at_iterate, 1., out=res)
             should_return = True
         else:
-            self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_iterate, 1., out=out)
+            # due to the convention that we follow: without the 1/n factor
+            self.stochastic_grad_difference.sapyb(1., self.full_gradient_at_iterate, 1., out=out)
         
         # Update subset gradients in memory: store the computed gradient F_{subset_num} (x) in self.subset_gradients[self.subset_num]
         self.list_stored_gradients[function_num].fill(self.stoch_grad_at_iterate)

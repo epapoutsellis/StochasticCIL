@@ -116,15 +116,6 @@ class TestSAGFunction(unittest.TestCase):
         # expected one data pass after iter=n_subsets=num_functions
         np.testing.assert_equal(F_SAG.data_passes,
                                 tmp_data_passes)                                                
-
-
-
-    
-
-      
-         
-         
-
     
     @unittest.skipUnless(has_cvxpy, "CVXpy not installed") 
     def test_with_cvxpy(self):
