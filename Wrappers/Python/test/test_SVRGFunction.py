@@ -73,13 +73,13 @@ class TestSVRGFunction(unittest.TestCase):
 
     #     initial = self.ig.allocate('random')
     #     x = self.ig.allocate('random')
-
+    #     func_num = 5
     #     F_SVRG = SVRGFunction(self.fi_cil, initial=initial) 
-    #     out1 = F_SVRG.gradient(x)
+    #     out1 = F_SVRG.approximate_gradient(func_num, x)
     #     F_SVRG.free_memory()
 
     #     out2 = self.ig.allocate()
-    #     F_SVRG.approximate_gradient(F_SVRG.function_num, x, out=out2)
+    #     F_SVRG.approximate_gradient(func_num, x, out=out2)
 
     #     np.testing.assert_allclose(out1.array, out2.array, atol=1e-4) 
     # 
