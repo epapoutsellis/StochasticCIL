@@ -15,34 +15,46 @@ class SAGFunction(ApproximateGradientSumFunction):
         # flag for memory allocation
         self.memory_allocated = False
 
-    def approximate_gradient(self, function_num, x, out):
+        if self.initial is not None:
+            self.data_passes = [1]
+
+    def approximate_gradient(self, function_num, x, out=None):
 
         """
         # TODO Improve doc: Returns a variance-reduced approximate gradient.        
         """
-
+     
         # Allocate in memory a) subset_gradients, b) full_gradient_at_iterate and c) stoch_grad_at_iterate, stochastic_grad_difference
         if not self.memory_allocated:
             self.allocate_memory(x) 
 
-        # Compute gradient for current subset and store in func_grad
-        self.functions[function_num].gradient(x, out=self.stoch_grad_at_iterate)
-
-        self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions),2)
+        # Compute gradient for current subset and store in stoch_grad_at_iterate
+        self.functions[function_num].gradient(x, out = self.stoch_grad_at_iterate)
+        self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions,2))
 
         # Compute the difference between the gradient of subset_num function 
         # at current iterate and the subset gradient, which is stored in stochastic_grad_difference.
         # stochastic_grad_difference = gradient F_{subset_num} (x) - subset_gradients_{subset_num}        
-        self.stoch_grad_at_iterate.sapyb(1., self.list_stored_gradients[function_num], -1., out=self.stochastic_grad_difference)
+        self.stoch_grad_at_iterate.sapyb(1., self.list_stored_gradients[function_num], -1., out = self.stochastic_grad_difference)
 
         # Compute the output : stochastic_grad_difference + full_gradient
-        self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_iterate, 1., out=out)
-
+        should_return=False
+        if out is None:
+            res = x*0. # for CIL/SIRF compatibility
+            self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_iterate, 1., out=res)
+            should_return = True
+        else:
+            self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_iterate, 1., out=out)
+        
         # Update subset gradients in memory: store the computed gradient F_{subset_num} (x) in self.subset_gradients[self.subset_num]
         self.list_stored_gradients[function_num].fill(self.stoch_grad_at_iterate)
 
         # Update the full gradient estimator: add (gradient F_{subset_num} (x) - subset_gradient_in_memory_{subset_num}) to the current full_gradient_at_iterate
         self.full_gradient_at_iterate.sapyb(1., self.stochastic_grad_difference, 1., out=self.full_gradient_at_iterate)
+
+        if should_return:
+            return res   
+
 
     def allocate_memory(self, x):
 
@@ -52,17 +64,15 @@ class SAGFunction(ApproximateGradientSumFunction):
         
         # Default initialisation point = 0
         if self.initial is None:
-            self.list_stored_gradients = [ x * 0.0 for _ in range(self.num_functions )]
-            self.full_gradient_at_iterate = x * 0.0
+            self.list_stored_gradients = [ x * 0.0] * self.num_functions # for CIL/SIRF compatibility
+            self.full_gradient_at_iterate = x * 0.0 # for CIL/SIRF compatibility
         # Otherwise, initialise subset gradients in memory and the full gradient at the provided initial
         else:
             self.list_stored_gradients = [ fi.gradient(self.initial) for i, fi in enumerate(self.functions)]
             self.full_gradient_at_iterate =  sum(self.list_stored_gradients)
-            self.data_passes.append(round(self.data_passes[-1]+1,2))
 
-        self.stoch_grad_at_iterate = x * 0.0
-        self.stochastic_grad_difference = x * 0.0
-
+        self.stoch_grad_at_iterate = x * 0.0 # for CIL/SIRF compatibility
+        self.stochastic_grad_difference = x * 0.0 # for CIL/SIRF compatibility
         self.memory_allocated = True
     
     def free_memory(self):

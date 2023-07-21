@@ -45,42 +45,87 @@ class TestSAGFunction(unittest.TestCase):
         generator = RandomSampling.uniform(self.n_subsets)
         self.F_SAG = SAGFunction(self.fi_cil, generator)           
 
-        self.initial = self.ig.allocate()          
+        self.initial = self.ig.allocate()   
 
-    # def test_gradient(self):
-
-    #     out1 = self.ig.allocate()
-    #     out2 = self.ig.allocate()
-
-    #     x = self.ig.allocate('random', seed = 10)
-
-    #     # use the gradient method for one iteration
-    #     self.F_SAGA.gradient(x, out=out1)
+    def test_approximate_gradient(self):
         
-    #     # run all steps of the SAG gradient method for one iteration
-    #     tmp_sag = SAGAFunction(self.fi_cil, generator)     
+        # out not none case
+        x = self.ig.allocate('random')
+        func_num = 5     
+ 
+        out1 = self.F_SAG.approximate_gradient(func_num, x)  
+        # free memory to compare out is not None 
+        self.F_SAG.free_memory()
 
-    #     # x is passed but the gradient initial point = None, hence initial is 0
-    #     tmp_sag.initialise_memory(self.ig.allocate()) 
-    #     tmp_sag.next_subset()
-    #     tmp_sag.functions[tmp_sag.subset_num].gradient(x, out=tmp_sag.tmp1)
-    #     tmp_sag.tmp1.sapyb(1., tmp_sag.subset_gradients[tmp_sag.subset_num], -1., out=tmp_sag.tmp2)
-    #     tmp_sag.tmp2.sapyb(1., tmp_sag.full_gradient, 1.,  out=out2)
-    #     out2 *= self.precond(tmp_sag.subset_num, 3./self.ig.allocate(2.5))
+        out2 = self.ig.allocate()        
+        self.F_SAG.approximate_gradient(func_num, x, out=out2) 
+        np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
+        
+        
+    def test_gradient(self):
+        
+        x = self.ig.allocate(0)
+        
+        out1 = self.F_SAG.gradient(x)
+        self.F_SAG.free_memory()
 
-    #     # update subset_gradient in the subset_num
-    #     # update full gradient
-    #     tmp_sag.subset_gradients[tmp_sag.subset_num].fill(tmp_sag.tmp1)
-    #     tmp_sag.full_gradient.sapyb(1., tmp_sag.tmp2, 1./tmp_sag.num_subsets, out=tmp_sag.full_gradient)
+        out2 = self.ig.allocate()
+        self.F_SAG.approximate_gradient(self.F_SAG.function_num, x, out=out2)
 
-    #     np.testing.assert_allclose(tmp_sag.subset_gradients[tmp_sag.subset_num].array, 
-    #                                tmp_sag.tmp1.array, atol=1e-3)
+        np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
 
-    #     np.testing.assert_allclose(tmp_sag.full_gradient.array, 
-    #                                self.F_SAGA.full_gradient.array, atol=1e-3)                                     
+    def test_SAGFunction_initial(self):
 
-    #     np.testing.assert_allclose(out1.array, out2.array, atol=1e-3)                                     
+        initial = self.ig.allocate('random')
+        x = self.ig.allocate('random')
 
+        F_SAG = SAGFunction(self.fi_cil, initial=initial) 
+        out1 = F_SAG.gradient(x)
+        F_SAG.free_memory()
+
+        out2 = self.ig.allocate()
+        F_SAG.approximate_gradient(F_SAG.function_num, x, out=out2)
+
+        np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)  
+
+    def test_data_passes(self):
+
+        # without initial
+        np.testing.assert_equal(self.F_SAG.data_passes, [0])   
+        num_epochs = 10
+        x = self.ig.allocate()
+        for _ in range(num_epochs*self.n_subsets):
+            res = self.F_SAG.gradient(x)
+
+        # expected one data pass after iter=n_subsets=num_functions
+        np.testing.assert_equal(self.F_SAG.data_passes[0::self.n_subsets],
+                                np.linspace(0.,10.,11, endpoint=True)) 
+
+
+        # with initial
+        initial = self.ig.allocate('random')
+        F_SAG = F_SAG = SAGFunction(self.fi_cil, initial = initial)
+        np.testing.assert_equal(F_SAG.data_passes, [1])   
+        num_epochs = 10
+        x = self.ig.allocate()
+        tmp_data_passes = [1.]
+        for _ in range(num_epochs*self.n_subsets):
+            res = F_SAG.gradient(x)
+            tmp_data_passes.append(round(tmp_data_passes[-1] + 1./self.n_subsets,2))
+
+        # expected one data pass after iter=n_subsets=num_functions
+        np.testing.assert_equal(F_SAG.data_passes,
+                                tmp_data_passes)                                                
+
+
+
+    
+
+      
+         
+         
+
+    
     @unittest.skipUnless(has_cvxpy, "CVXpy not installed") 
     def test_with_cvxpy(self):
         
@@ -89,8 +134,8 @@ class TestSAGFunction(unittest.TestCase):
         p = cvxpy.Problem(objective)
         p.solve(verbose=True, solver=cvxpy.SCS, eps=1e-4) 
 
-        step_size = 0.0001 
-        epochs = 100
+        step_size = 1./self.F_SAG.L
+        epochs = 200
         sag = GD(initial = self.initial, objective_function = self.F_SAG, step_size = step_size,
                     max_iteration = epochs * self.n_subsets, 
                     update_objective_interval =  epochs * self.n_subsets)
