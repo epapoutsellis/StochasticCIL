@@ -104,7 +104,7 @@ class TestSAGFunction(unittest.TestCase):
 
         # with initial
         initial = self.ig.allocate('random')
-        F_SAG = F_SAG = SAGFunction(self.fi_cil, initial = initial)
+        F_SAG = SAGFunction(self.fi_cil, initial = initial)
         np.testing.assert_equal(F_SAG.data_passes, [1])   
         num_epochs = 10
         x = self.ig.allocate()

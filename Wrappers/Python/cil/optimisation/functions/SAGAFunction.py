@@ -20,7 +20,7 @@ class SAGAFunction(SAGFunction):
         if self.initial is not None:
             self.data_passes = [1]                 
 
-    def approximate_gradient(self, function_num, x, out):
+    def approximate_gradient(self, function_num, x, out=None):
 
         """
         # TODO Improve doc: Returns a variance-reduced approximate gradient.        
@@ -39,12 +39,23 @@ class SAGAFunction(SAGFunction):
         # stoch_grad_at_iterate = gradient F_{subset_num} (x) - list_stored_gradients[function_num]
         self.stoch_grad_at_iterate.sapyb(1., self.list_stored_gradients[function_num], -1., out=self.stochastic_grad_difference)
 
-        # Compute the output : stochastic_grad_difference + full_gradient_at_iterate
-        self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_iterate, 1., out=out)
+        # Compute the output : stochastic_grad_difference + full_gradient_at_iterate        
+        should_return=False
+        if out is None:
+            res = x*0. # for CIL/SIRF compatibility
+            # due to the convention that we follow: without the 1/n factor
+            self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_iterate, 1., out=res)
+            should_return = True
+        else:
+            # due to the convention that we follow: without the 1/n factor
+            self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_iterate, 1., out=out)        
 
         # Update subset gradients in memory: store the computed gradient F_{subset_num} (x) in list_stored_gradients[function_num]
         self.list_stored_gradients[function_num].fill(self.stoch_grad_at_iterate)
 
         # Update the full gradient estimator: add (gradient F_{subset_num} (x) - list_stored_gradients[function_num]) to the current full_gradient
         self.full_gradient_at_iterate.sapyb(1., self.stochastic_grad_difference, 1., out=self.full_gradient_at_iterate)
+
+        if should_return:
+            return res          
     
