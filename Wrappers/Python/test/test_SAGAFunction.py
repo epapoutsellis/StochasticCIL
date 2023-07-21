@@ -88,8 +88,8 @@ class TestSAGAFunction(unittest.TestCase):
         p = cvxpy.Problem(objective)
         p.solve(verbose=True, solver=cvxpy.SCS, eps=1e-4) 
 
-        step_size = 0.0001 
-        epochs = 100
+        step_size = 1./self.F_SAGA.L
+        epochs = 200
         saga = GD(initial = self.initial, objective_function = self.F_SAGA, step_size = step_size,
                     max_iteration = epochs * self.n_subsets, 
                     update_objective_interval =  epochs * self.n_subsets)

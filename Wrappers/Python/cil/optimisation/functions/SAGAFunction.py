@@ -8,11 +8,17 @@ class SAGAFunction(SAGFunction):
     
     """
 
-    def __init__(self, functions, selection=None, gradient_initial_point=None):
-  
-        self.gradient_initial_point = gradient_initial_point
-        self.allocate_memory = False
-        super(SAGFunction, self).__init__(functions, selection=selection)
+
+    def __init__(self, functions, selection=None, initial=None):            
+ 
+        super(SAGAFunction, self).__init__(functions, selection = selection, initial=initial)
+
+        # flag for memory allocation
+        self.memory_allocated = False           
+
+        self.data_passes=[0]
+        if self.initial is not None:
+            self.data_passes = [1]                 
 
     def approximate_gradient(self, function_num, x, out):
 
@@ -20,24 +26,25 @@ class SAGAFunction(SAGFunction):
         # TODO Improve doc: Returns a variance-reduced approximate gradient.        
         """
 
-        # Allocate in memory a) subset_gradients, b) tmp_full_gradient and c) func_grad, func_grad_diff
-        if not self.allocate_memory:
-            self.initialise_memory(x) 
+        # Allocate in memory a) list_stored_gradients[function_num], b) full_gradient_at_iterate and c) stoch_grad_at_iterate, stochastic_grad_difference
+        if not self.memory_allocated:
+            self.allocate_memory(x) 
 
-        # Compute gradient for current subset and store in func_grad
-        self.functions[self.function_num].gradient(x, out=self.func_grad)
+        # Compute gradient for current subset and store in stoch_grad_at_iterate
+        self.functions[function_num].gradient(x, out=self.stoch_grad_at_iterate)
+        self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions,2))
         
         # Compute the difference between the gradient of subset_num function 
-        # at current iterate and the subset gradient, which is stored in func_grad_diff.
-        # func_grad_diff = gradient F_{subset_num} (x) - subset_gradients_{subset_num}
-        self.func_grad.sapyb(1., self.subset_gradients[self.function_num], -1., out=self.func_grad_diff)
+        # at current iterate and the subset gradient, which is stored in stochastic_grad_difference.
+        # stoch_grad_at_iterate = gradient F_{subset_num} (x) - list_stored_gradients[function_num]
+        self.stoch_grad_at_iterate.sapyb(1., self.list_stored_gradients[function_num], -1., out=self.stochastic_grad_difference)
 
-        # Compute the output : func_grad_diff + tmp_full_gradient
-        self.func_grad_diff.sapyb(self.num_functions, self.tmp_full_gradient, 1., out=out)
+        # Compute the output : stochastic_grad_difference + full_gradient_at_iterate
+        self.stochastic_grad_difference.sapyb(self.num_functions, self.full_gradient_at_iterate, 1., out=out)
 
-        # Update subset gradients in memory: store the computed gradient F_{subset_num} (x) in self.subset_gradients[self.subset_num]
-        self.subset_gradients[self.function_num].fill(self.func_grad)
+        # Update subset gradients in memory: store the computed gradient F_{subset_num} (x) in list_stored_gradients[function_num]
+        self.list_stored_gradients[function_num].fill(self.stoch_grad_at_iterate)
 
-        # Update the full gradient estimator: add (gradient F_{subset_num} (x) - subset_gradient_in_memory_{subset_num}) to the current full_gradient
-        self.tmp_full_gradient.sapyb(1., self.func_grad_diff, 1., out=self.tmp_full_gradient)
+        # Update the full gradient estimator: add (gradient F_{subset_num} (x) - list_stored_gradients[function_num]) to the current full_gradient
+        self.full_gradient_at_iterate.sapyb(1., self.stochastic_grad_difference, 1., out=self.full_gradient_at_iterate)
     
