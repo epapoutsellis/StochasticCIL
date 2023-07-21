@@ -134,26 +134,4 @@ class TestSAGAFunction(unittest.TestCase):
         saga.run(verbose=0)    
 
         np.testing.assert_allclose(p.value, saga.objective[-1], atol=1e-1)
-
         np.testing.assert_allclose(u_cvxpy.value, saga.solution.array, atol=1e-1)
-
-
-
-        
-
-
-              
-
-
-
-
-                      
-
-
-
-
-
-
-
-
-
