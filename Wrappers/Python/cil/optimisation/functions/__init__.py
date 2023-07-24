@@ -38,5 +38,6 @@ from .SGFunction import SGFunction
 from .SAGFunction import SAGFunction
 from .SAGAFunction import SAGAFunction
 from .SVRGFunction import SVRGFunction
+from .SVRGFunction import LSVRGFunction
 
 
