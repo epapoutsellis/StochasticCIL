@@ -16,9 +16,7 @@ class SAGAFunction(SAGFunction):
         # flag for memory allocation
         self.memory_allocated = False           
 
-        self.data_passes=[0]
-        if self.initial is not None:
-            self.data_passes = [1]                 
+        self.data_passes = [0.]               
 
     def approximate_gradient(self, function_num, x, out=None):
 
