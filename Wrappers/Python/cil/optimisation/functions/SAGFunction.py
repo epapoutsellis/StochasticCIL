@@ -30,7 +30,7 @@ class SAGFunction(ApproximateGradientSumFunction):
 
         # Compute gradient for current subset and store in stoch_grad_at_iterate
         self.functions[function_num].gradient(x, out = self.stoch_grad_at_iterate)
-        self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions,2))
+        self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions,4))
 
         # Compute the difference between the gradient of subset_num function 
         # at current iterate and the subset gradient, which is stored in stochastic_grad_difference.
