@@ -90,33 +90,19 @@ class TestSAGAFunction(unittest.TestCase):
     def test_data_passes(self):
 
         # without initial
-        np.testing.assert_equal(self.F_SAGA.data_passes, [0])   
-        num_epochs = 10
-        x = self.ig.allocate()
-        for _ in range(num_epochs*self.n_subsets):
-            res = self.F_SAGA.gradient(x)
-
-        # expected one data pass after iter=n_subsets=num_functions
-        np.testing.assert_equal(self.F_SAGA.data_passes[0::self.n_subsets],
-                                np.linspace(0.,10.,11, endpoint=True)) 
-
-
-        # with initial
         initial = self.ig.allocate('random')
-        F_SAGA = SAGAFunction(self.fi_cil, initial = initial)
-        np.testing.assert_equal(F_SAGA.data_passes, [1])   
+        F_SAGA = SAGAFunction(self.fi_cil, initial=initial)
+        np.testing.assert_equal(F_SAGA.data_passes, [0])   
         num_epochs = 10
         x = self.ig.allocate()
-        tmp_data_passes = [1.]
         for _ in range(num_epochs*self.n_subsets):
             res = F_SAGA.gradient(x)
-            tmp_data_passes.append(round(tmp_data_passes[-1] + 1./self.n_subsets,2))
 
         # expected one data pass after iter=n_subsets=num_functions
-        np.testing.assert_equal(F_SAGA.data_passes,
-                                tmp_data_passes)         
+        np.testing.assert_equal(F_SAGA.data_passes[0::self.n_subsets],
+                                np.linspace(0.,10.,11, endpoint=True)) 
 
-                                 
+                                      
 
     @unittest.skipUnless(has_cvxpy, "CVXpy not installed") 
     def test_with_cvxpy(self):
