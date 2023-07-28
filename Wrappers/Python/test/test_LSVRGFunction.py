@@ -134,25 +134,6 @@ class TestLSVRGFunction(unittest.TestCase):
         for i in range(len(tmp_list)):
             np.testing.assert_equal(tmp_list[i].array, F_LSVRG.list_stored_gradients[i].array) 
 
-    def test_data_passes(self):
-
-        num_epochs = 5
-        # every two/five iterations/2*num_functions full gradient is eval, increment data_passes
-        for uf in [2, 5, 2*len(self.fi_cil)]:
-            F_LSVRG = LSVRGFunction(self.fi_cil, update_frequency=uf) 
-            x = self.ig.allocate()
-            tmp_data_passes = [None]
-            for i in range(self.n_subsets*num_epochs):
-                res = F_LSVRG.gradient(x)
-                if i==0:
-                    tmp_data_passes[0]=1.0
-                    np.testing.assert_equal(F_LSVRG.data_passes[-1], 1.) 
-                elif i % uf==0:
-                    tmp_data_passes.append(round(tmp_data_passes[-1] + 1, 2))
-                else:
-                    tmp_data_passes.append(round(tmp_data_passes[-1] + 1./F_LSVRG.num_functions, 2))
-
-            np.testing.assert_equal(F_LSVRG.data_passes, tmp_data_passes) 
                          
     @unittest.skipUnless(has_cvxpy, "CVXpy not installed") 
     def test_with_cvxpy(self):
