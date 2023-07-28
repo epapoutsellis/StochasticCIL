@@ -226,7 +226,7 @@ class LSVRGFunction(SVRGFunction):
                 self.data_passes[0] = 1.
             else:
                 # increment by 1, since full gradient is computed again
-                self.data_passes.append(round(self.data_passes[-1] + 1.,2))
+                self.data_passes.append(round(self.data_passes[-1] + 1.,4))
 
         else:
             # implements the LSVRG inner loop            
@@ -238,7 +238,7 @@ class LSVRGFunction(SVRGFunction):
                 self.stoch_grad_at_iterate.sapyb(1., self.functions[function_num].gradient(self.snapshot), -1., out=self.stochastic_grad_difference)         
 
             # only on gradient randomly selected is seen and appended it to data_passes    
-            self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions,2))
+            self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions,4))
 
         # full gradient is added to the stochastic grad difference 
         if out is None:
