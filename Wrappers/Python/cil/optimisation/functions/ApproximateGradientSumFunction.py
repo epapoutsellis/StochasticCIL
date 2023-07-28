@@ -37,7 +37,7 @@ class ApproximateGradientSumFunction(SumFunction):
 
     """
     
-    def __init__(self, functions, selection=None, data_passes=None, initial=None):    
+    def __init__(self, functions, selection=None, data_passes=None, initial=None, dask=False):    
                         
         if selection is None:
             self.selection = RandomSampling.uniform(len(functions))
@@ -47,14 +47,62 @@ class ApproximateGradientSumFunction(SumFunction):
         self.functions_used = [] 
         self.data_passes = data_passes
         self.initial = initial
-            
-        super(ApproximateGradientSumFunction, self).__init__(*functions)            
-       
+        self._dask = dask
+
+        try:
+            import dask
+            self._dask_available = True
+            self._module = dask
+        except ImportError:
+            print("Dask is not installed.")
+            self._dask_available = False
+                
+        super(ApproximateGradientSumFunction, self).__init__(*functions) 
+
+    @property
+    def dask(self):
+        return self._dask
+
+    @dask.setter
+    def dask(self, value):
+        if self._dask_available:
+            self._dask = value
+        else:
+            print("Dask is not installed.")
+
+    def __call__(self, x):
+        if self.dask:
+            return self._call_parallel(x)
+        else:
+            r""" Computes the full gradient at :code:`x`. It is the sum of all the gradients for each function. """
+        return super(ApproximateGradientSumFunction, self).__call__(x)    
+
+    def _call_parallel(self, x):
+        res = []
+        for f in self.functions:
+            res.append(self._module.delayed(f)(x))
+        return sum(self._module.compute(*res))  
+
+    def _gradient_parallel(self, x, out):
         
+        res = []
+        for f in self.functions:
+            res.append(self._module.delayed(f.gradient)(x))
+        tmp = self._module.compute(*res)
+        
+        if out is None:
+            return sum(tmp)
+        else:
+            out.fill(sum(tmp))      
+               
     def full_gradient(self, x, out=None):
 
-        r""" Computes the full gradient at :code:`x`. It is the sum of all the gradients for each function. """
-        return super(ApproximateGradientSumFunction, self).gradient(x, out=out)
+        if self.dask:
+            return self._gradient_parallel(x, out=out)            
+        else:
+            r""" Computes the full gradient at :code:`x`. It is the sum of all the gradients for each function. """
+        return super(ApproximateGradientSumFunction, self).gradient(x, out=out)                              
+       
         
     def approximate_gradient(self, function_num, x,  out=None):
 
@@ -93,7 +141,3 @@ class ApproximateGradientSumFunction(SumFunction):
         raise NotImplementedError
 
 
-
-
-
-    
