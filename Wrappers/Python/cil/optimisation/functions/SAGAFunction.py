@@ -30,7 +30,7 @@ class SAGAFunction(SAGFunction):
 
         # Compute gradient for current subset and store in stoch_grad_at_iterate
         self.functions[function_num].gradient(x, out=self.stoch_grad_at_iterate)
-        self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions,2))
+        self.data_passes.append(round(self.data_passes[-1] + 1./self.num_functions,4))
         
         # Compute the difference between the gradient of subset_num function 
         # at current iterate and the subset gradient, which is stored in stochastic_grad_difference.
@@ -52,7 +52,7 @@ class SAGAFunction(SAGFunction):
         self.list_stored_gradients[function_num].fill(self.stoch_grad_at_iterate)
 
         # Update the full gradient estimator: add (gradient F_{subset_num} (x) - list_stored_gradients[function_num]) to the current full_gradient
-        self.full_gradient_at_iterate.sapyb(1., self.stochastic_grad_difference, 1., out=self.full_gradient_at_iterate)
+        self.full_gradient_at_iterate.sapyb(1., self.stochastic_grad_difference, self.num_functions, out=self.full_gradient_at_iterate)
 
         if should_return:
             return res          
