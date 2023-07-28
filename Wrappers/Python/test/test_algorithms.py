@@ -1088,12 +1088,13 @@ class TestPrint(unittest.TestCase):
 
         class test_callback(object):
 
-            def __init__(self, iteration, objective, solution):
+            def __init__(self, iteration, objective, solution, verbose=0):
                 self.iteration = iteration
                 self.objective = objective
                 self.solution = solution
+                self.verbose = verbose
 
-            def __call__(self):
+            def __call__(self, algo):
                 print("I am being called ", self.iteration)
             
         algo = PrintAlgo(update_objective_interval = 10, max_iteration = 1000)
@@ -1114,7 +1115,7 @@ class TestPrint(unittest.TestCase):
         
         algo.run(20, verbose=1, very_verbose=False)
         ts = test_callback(1,2,3)
-        algo.run(20, verbose=2, print_interval=7, callback=ts)
+        algo.run(20, verbose=2, print_interval=7, callback=[ts])
         
         logging.info(algo._iteration)
         logging.info(algo.objective)
