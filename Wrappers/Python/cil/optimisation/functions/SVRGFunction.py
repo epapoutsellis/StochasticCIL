@@ -27,7 +27,7 @@ class SVRGFunction(ApproximateGradientSumFunction):
     def __init__(self, functions, selection=None, update_frequency = None, 
                        store_gradients = False, initial=None):
 
-        super(SVRGFunction, self).__init__(functions, selection = selection, data_passes = [None], initial=initial)
+        super(SVRGFunction, self).__init__(functions, selection = selection, data_passes = [0], initial=initial)
 
         # update_frequency for SVRG
         self.update_frequency = update_frequency
@@ -171,7 +171,8 @@ class LSVRGFunction(SVRGFunction):
         self.store_gradients = store_gradients
 
         # control randomness using see
-        np.random.seed(seed)
+        self.seed = seed
+        np.random.seed(self.seed)
 
         # default update_prob for Loopless SVRG        
         if self.update_prob is None:                
@@ -184,7 +185,7 @@ class LSVRGFunction(SVRGFunction):
         self.svrg_iter = -1
 
         # data_passes
-        self.data_passes = [None]
+        self.data_passes = [0]
 
         # store the number of data/functions seen during the approximate gradient method up to the self.iter of the algorithm used               
         # example: SGFunction with 10 subsets self.data_passes = [0.1,...,0.5,...,0.9,1.0, 1.1,...]                                          
