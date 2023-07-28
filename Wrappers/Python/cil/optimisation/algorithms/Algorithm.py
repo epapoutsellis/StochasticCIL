@@ -322,7 +322,7 @@ class Algorithm(object):
                     msg_per_interval = self.verbose_output(very_verbose)
 
                     if callback_verbose:
-                        callback_info_iters = " ".join(cb.callback_info_iter() for cb in callback if cb.verbose)
+                        callback_info_iters = " ".join(cb.callback_iteration() for cb in callback if cb.verbose)
                         msg_per_interval += callback_info_iters
 
                     print(msg_per_interval)

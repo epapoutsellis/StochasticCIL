@@ -42,14 +42,14 @@ class AlgorithmDiagnostics:
     def print_callback_iteration(self):
         print(self.callback_iteration())                 
         
-    def __call__(self, algo=None):
+    def __call__(self, algo):
         raise NotImplementedError
         
     def callback_header(self):
-        raise NotImplementedError
+        return " "
     
     def callback_iteration(self):
-     	raise NotImplementedError
+     	return " "
                  
 
 class MetricsDiagnostics(AlgorithmDiagnostics):
@@ -82,7 +82,7 @@ class MetricsDiagnostics(AlgorithmDiagnostics):
     def callback_header(self):
         return " ".join("{:>20}".format(metric_name) for metric_name in self.metrics_dict.keys())
 
-    def callback_info_iter(self):
+    def callback_iteration(self):
         if isinstance(self.computed_metrics, list):
             # Handle list of metrics
             return " ".join("{:>20.5e}".format(metric) for metric in self.computed_metrics[-len(self.metrics_dict):])
@@ -118,7 +118,7 @@ class StatisticsDiagnostics(AlgorithmDiagnostics):
     def callback_header(self):
         return " ".join("{:>20}".format(statistic_name) for statistic_name in self.statistics_dict.keys())
 
-    def callback_info_iter(self):
+    def callback_iteration(self):
         if isinstance(self.computed_statistics, list):
             # Handle list of statistics
             return " ".join("{:>20.5e}".format(statistic_name) for statistic_name in self.computed_statistics[-len(self.statistics_dict):])
