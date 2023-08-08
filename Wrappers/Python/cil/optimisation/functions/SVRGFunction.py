@@ -124,7 +124,7 @@ class SVRGFunction(ApproximateGradientSumFunction):
 
         if self.store_gradients is True:            
             self.list_stored_gradients = [ fi.gradient(self.snapshot) for fi in self.functions] 
-            self.full_gradient_at_snapshot = sum(self.list_stored_gradients)
+            self.full_gradient_at_snapshot = np.sum(self.list_stored_gradients)
         else:
             self.full_gradient(self.snapshot, out=self.full_gradient_at_snapshot)
             

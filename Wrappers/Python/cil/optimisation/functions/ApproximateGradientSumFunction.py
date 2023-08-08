@@ -1,6 +1,8 @@
 from cil.optimisation.functions import SumFunction
 from cil.optimisation.utilities import RandomSampling
 import numbers
+import numpy as np
+
 class ApproximateGradientSumFunction(SumFunction):
 
     r"""ApproximateGradientSumFunction represents the following sum 
@@ -91,9 +93,9 @@ class ApproximateGradientSumFunction(SumFunction):
         tmp = self._module.compute(*res)
         
         if out is None:
-            return sum(tmp)
+            return np.sum(tmp)
         else:
-            out.fill(sum(tmp))      
+            out.fill(np.sum(tmp))      
                
     def full_gradient(self, x, out=None):
 
