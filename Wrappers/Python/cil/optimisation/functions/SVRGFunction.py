@@ -35,9 +35,9 @@ class SVRGFunction(ApproximateGradientSumFunction):
         # compute and store the gradient of each function in the finite sum
         self.store_gradients = store_gradients
 
-        # default values for SVRG
+        # default update frequency for SVRG is 2*n (convex cases), see  "Accelerating Stochastic Gradient Descent using Predictive Variance Reduction"
         if self.update_frequency is None:
-            self.update_frequency = self.num_functions
+            self.update_frequency = 2*self.num_functions
 
         # flag for memory allocation
         self.memory_allocated = False        
