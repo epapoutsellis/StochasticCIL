@@ -63,16 +63,13 @@ class SAGFunction(ApproximateGradientSumFunction):
         r"""Initialize subset gradients :math:`v_{i}` and full gradient that are stored in memory.
         The initial point is 0 by default.
         """
-        
-        # Default initialisation point = 0
-        if self.initial is None:
-            self.list_stored_gradients = [ x * 0.0] * self.num_functions # for CIL/SIRF compatibility
-            self.full_gradient_at_iterate = x * 0.0 # for CIL/SIRF compatibility
-        # Otherwise, initialise subset gradients in memory and the full gradient at the provided initial
-        else:
-            self.list_stored_gradients = [ fi.gradient(self.initial) for i, fi in enumerate(self.functions)]
-            self.full_gradient_at_iterate =  sum(self.list_stored_gradients)
 
+        if self.initial is None:
+            self.initial = x*0.
+
+        self.list_stored_gradients = [ fi.gradient(self.initial) for i, fi in enumerate(self.functions)]
+        self.full_gradient_at_iterate =  sum(self.list_stored_gradients)            
+    
         self.stoch_grad_at_iterate = x * 0.0 # for CIL/SIRF compatibility
         self.stochastic_grad_difference = x * 0.0 # for CIL/SIRF compatibility
         self.memory_allocated = True
