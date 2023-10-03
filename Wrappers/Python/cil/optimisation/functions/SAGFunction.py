@@ -67,7 +67,7 @@ class SAGFunction(ApproximateGradientSumFunction):
         if self.initial is None:
             self.initial = x*0.
 
-        self.list_stored_gradients = [ fi.gradient(self.initial) for i, fi in enumerate(self.functions)]
+        self.list_stored_gradients = [ fi.gradient(self.initial) for fi in self.functions]
         self.full_gradient_at_iterate =  sum(self.list_stored_gradients)            
     
         self.stoch_grad_at_iterate = x * 0.0 # for CIL/SIRF compatibility

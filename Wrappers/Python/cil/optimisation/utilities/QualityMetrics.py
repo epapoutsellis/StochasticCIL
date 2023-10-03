@@ -1,24 +1,24 @@
 import numpy as np
 
-def RSE(x, y):
+def RSE(x, y, **kwargs):
     """
      root squared error between two numpy arrays
     """
     return np.sqrt(np.sum((x - y)**2))
 
-def MSE(x,y):
+def MSE(x,y, **kwargs):
     """ mean squared error between two numpy arrays
     """
     # using numpy api, unless CIL/SIRF have numpy mean implemented
     # callback makes them numpy arrays
     return np.mean((x-y)**2)
 
-def MAE(x,y):
+def MAE(x,y, **kwargs):
     """ mean absolute error between two numpy arrays
     """
     return np.abs(x-y).mean()
 
-def PSNR(x, y, scale = None):
+def PSNR(x, y, **kwargs):
     """ peak signal to noise ratio between two numpy arrays x and y
         y is considered to be the reference array and the default scale
         needed for the PSNR is assumed to be the max of this array
@@ -57,9 +57,10 @@ class MetricsDiagnostics(AlgorithmDiagnostics):
     def __init__(self, reference_image, metrics_dict, verbose=1):
 
         # reference image as numpy (level) array
-        self.reference_image = reference_image.as_array()
-        
+        self.reference_image = reference_image.as_array()        
         self.metrics_dict = metrics_dict
+        # if data_range is None:
+            # self.data_range = np.abs(self.reference_image.max() - self.reference_image.min())
         self.computed_metrics = []    
 
         super(MetricsDiagnostics, self).__init__(verbose=verbose)  
@@ -74,7 +75,7 @@ class MetricsDiagnostics(AlgorithmDiagnostics):
                 setattr(algo, metric_name, [])   
                 
             metric_list = getattr(algo, metric_name)
-            metric_value = metric_func(test_image_array.ravel(), self.reference_image.ravel())
+            metric_value = metric_func(self.reference_image.ravel(), test_image_array.ravel())
             metric_list.append(metric_value)
             
             self.computed_metrics.append(metric_value)
