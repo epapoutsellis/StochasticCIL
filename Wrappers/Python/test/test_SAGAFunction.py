@@ -112,12 +112,13 @@ class TestSAGAFunction(unittest.TestCase):
         p = cvxpy.Problem(objective)
         p.solve(verbose=True, solver=cvxpy.SCS, eps=1e-4) 
 
-        step_size = 1./self.F_SAGA.L
+        step_size = 1./(3*self.F_SAGA.L) # theoretical learning rate/step_size
         epochs = 200
         saga = GD(initial = self.initial, objective_function = self.F_SAGA, step_size = step_size,
                     max_iteration = epochs * self.n_subsets, 
                     update_objective_interval =  epochs * self.n_subsets)
         saga.run(verbose=0)    
 
-        np.testing.assert_allclose(p.value, saga.objective[-1], atol=1e-1)
+       
         np.testing.assert_allclose(u_cvxpy.value, saga.solution.array, atol=1e-1)
+        np.testing.assert_allclose(p.value, saga.objective[-1], atol=1e-1)

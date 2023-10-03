@@ -146,13 +146,14 @@ class SIRT(Algorithm):
         .. math:: x^{k+1} =  \mathrm{proj}_{C}( x^{k} + D ( A^{T} ( M * (b - Ax) ) ) )
 
         """
-        
-        self.r = self.data - self.operator.direct(self.x)
-        
-        self.x += self.relax_par * (self.D*self.operator.adjoint(self.M*self.r))
-        
+
+        # change order of steps, for the residual update                                
+        self.x += self.relax_par * (self.D*self.operator.adjoint(self.M*self.r))        
         if self.constraint is not None:
-            self.x = self.constraint.proximal(self.x, tau=1)
+            self.x = self.constraint.proximal(self.x, tau=1)         
+        self.operator.direct(self.x, out=self.r)
+        self.r.sapyb(-1., self.data, 1., out=self.r)
+              
 
     def update_objective(self):
         r"""Returns the objective 
@@ -160,7 +161,7 @@ class SIRT(Algorithm):
         .. math:: \|A x - b\|^{2}
 
         """
-        self.loss.append(self.r.squared_norm())
+        self.loss.append(0.5*self.r.squared_norm())
 
 
 

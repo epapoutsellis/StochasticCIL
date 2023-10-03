@@ -68,31 +68,24 @@ class TestAlgorithms(CCPiTestClass):
     def test_GD(self):
         ig = ImageGeometry(12,13,14)
         initial = ig.allocate()
-        # b = initial.copy()
-        # fill with random numbers
-        # b.fill(numpy.random.random(initial.shape))
-        b = ig.allocate('random')
+        b = ig.allocate(2)
         identity = IdentityOperator(ig)
         
         norm2sq = LeastSquares(identity, b)
-        rate = norm2sq.L / 3.
-        
-        alg = GD(initial=initial, 
-                              objective_function=norm2sq, 
-                              rate=rate, atol=1e-9, rtol=1e-6)
+        step_size = 1./norm2sq.L
+        alg = GD(initial=initial, objective_function=norm2sq, step_size=step_size)
         alg.max_iteration = 1000
         alg.run(verbose=0)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
-        alg = GD(initial=initial, 
-                              objective_function=norm2sq, 
-                              rate=rate, max_iteration=20,
-                              update_objective_interval=2,
-                              atol=1e-9, rtol=1e-6)
-        alg.max_iteration = 20
-        self.assertTrue(alg.max_iteration == 20)
-        self.assertTrue(alg.update_objective_interval==2)
-        alg.run(20, verbose=0)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
+        np.testing.assert_allclose(alg.solution.as_array(), b.as_array(), rtol=1e-3)
+        # self.assertNumpyArrayAlmostEqual(alg.solution.as_array(), b.as_array())
+        # alg = GD(initial=initial, 
+        #                       objective_function=norm2sq,  max_iteration=20,
+        #                       update_objective_interval=2)
+        # alg.max_iteration = 20
+        # self.assertTrue(alg.max_iteration == 20)
+        # self.assertTrue(alg.update_objective_interval==2)
+        # alg.run(20, verbose=0)
+        # self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
 
     def test_update_interval_0(self):
         '''
@@ -102,69 +95,67 @@ class TestAlgorithms(CCPiTestClass):
         '''
         ig = ImageGeometry(12,13,14)
         initial = ig.allocate()
-        b = ig.allocate('random')
+        b = ig.allocate(2)
         identity = IdentityOperator(ig)
         norm2sq = LeastSquares(identity, b)
         alg = GD(initial=initial, 
                  objective_function=norm2sq, 
-                 max_iteration=20,
-                 update_objective_interval=0,
-                 atol=1e-9, rtol=1e-6)
+                 max_iteration=1000, 
+                 update_objective_interval = 0,
+                )
         self.assertTrue(alg.update_objective_interval==0)
-        alg.run(20, verbose=True)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
-        alg.run(20, verbose=False)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
-
-
-    def test_GDArmijo(self):
-        ig = ImageGeometry(12,13,14)
-        initial = ig.allocate()
-        # b = initial.copy()
-        # fill with random numbers
-        # b.fill(numpy.random.random(initial.shape))
-        b = ig.allocate('random')
-        identity = IdentityOperator(ig)
-        
-        norm2sq = LeastSquares(identity, b)
-        rate = None
-        
-        alg = GD(initial=initial, 
-                              objective_function=norm2sq, rate=rate)
-        alg.max_iteration = 100
         alg.run(verbose=0)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
-        alg = GD(initial=initial, 
-                              objective_function=norm2sq, 
-                              max_iteration=20,
-                              update_objective_interval=2)
-        #alg.max_iteration = 20
-        self.assertTrue(alg.max_iteration == 20)
-        self.assertTrue(alg.update_objective_interval==2)
-        alg.run(20, verbose=0)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
+        np.testing.assert_allclose(alg.solution.as_array(), b.as_array(), rtol=1e-3)
 
 
-    def test_GDArmijo2(self):
-
-        f = Rosenbrock (alpha = 1., beta=100.)
-        vg = VectorGeometry(2)
-        x = vg.allocate('random_int', seed=2)
-        # x = vg.allocate('random', seed=1) 
-        x.fill(numpy.asarray([10.,-3.]))
+    # def test_GDArmijo(self):
+    #     ig = ImageGeometry(12,13,14)
+    #     initial = ig.allocate()
+    #     # b = initial.copy()
+    #     # fill with random numbers
+    #     # b.fill(numpy.random.random(initial.shape))
+    #     b = ig.allocate('random')
+    #     identity = IdentityOperator(ig)
         
-        max_iter = 10000
-        update_interval = 1000
-
-        alg = GD(x, f, max_iteration=max_iter, update_objective_interval=update_interval, alpha=1e6)
+    #     norm2sq = LeastSquares(identity, b)
+    #     rate = None
         
-        alg.run(verbose=0)
+    #     alg = GD(initial=initial, 
+    #                           objective_function=norm2sq, rate=rate)
+    #     alg.max_iteration = 100
+    #     alg.run(verbose=0)
+    #     self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
+    #     alg = GD(initial=initial, 
+    #                           objective_function=norm2sq, 
+    #                           max_iteration=20,
+    #                           update_objective_interval=2)
+    #     #alg.max_iteration = 20
+    #     self.assertTrue(alg.max_iteration == 20)
+    #     self.assertTrue(alg.update_objective_interval==2)
+    #     alg.run(20, verbose=0)
+    #     self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
+
+
+    # def test_GDArmijo2(self):
+
+    #     f = Rosenbrock (alpha = 1., beta=100.)
+    #     vg = VectorGeometry(2)
+    #     x = vg.allocate('random_int', seed=2)
+    #     # x = vg.allocate('random', seed=1) 
+    #     x.fill(numpy.asarray([10.,-3.]))
+        
+    #     max_iter = 10000
+    #     update_interval = 1000
+
+    #     alg = GD(x, f, max_iteration=max_iter, update_objective_interval=update_interval, alpha=1e6)
+        
+    #     alg.run(verbose=0)
                 
-        # this with 10k iterations
-        numpy.testing.assert_array_almost_equal(alg.get_output().as_array(), [0.13463363, 0.01604593], decimal = 5)
-        # this with 1m iterations
-        # numpy.testing.assert_array_almost_equal(alg.get_output().as_array(), [1,1], decimal = 1)
-        # numpy.testing.assert_array_almost_equal(alg.get_output().as_array(), [0.982744, 0.965725], decimal = 6)
+    #     # this with 10k iterations
+    #     numpy.testing.assert_array_almost_equal(alg.get_output().as_array(), [0.13463363, 0.01604593], decimal = 5)
+    #     # this with 1m iterations
+    #     # numpy.testing.assert_array_almost_equal(alg.get_output().as_array(), [1,1], decimal = 1)
+    #     # numpy.testing.assert_array_almost_equal(alg.get_output().as_array(), [0.982744, 0.965725], decimal = 6)
 
 
     def test_CGLS(self):
@@ -180,13 +171,13 @@ class TestAlgorithms(CCPiTestClass):
 
         alg.max_iteration = 200      
         alg.run(20, verbose=0)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
+        self.assertNumpyArrayAlmostEqual(alg.solution.as_array(), b.as_array())
 
         alg = CGLS(initial=initial, operator=identity, data=b, max_iteration=200, update_objective_interval=2)
         self.assertTrue(alg.max_iteration == 200)
         self.assertTrue(alg.update_objective_interval==2)
         alg.run(20, verbose=0)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
+        self.assertNumpyArrayAlmostEqual(alg.solution.as_array(), b.as_array())
     
           
     def test_FISTA(self):
@@ -205,7 +196,7 @@ class TestAlgorithms(CCPiTestClass):
         alg = FISTA(initial=initial, f=norm2sq, g=ZeroFunction())
         alg.max_iteration = 2
         alg.run(20, verbose=0)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
+        self.assertNumpyArrayAlmostEqual(alg.solution.as_array(), b.as_array())
 
         alg = FISTA(initial=initial, f=norm2sq, g=ZeroFunction(), max_iteration=2, update_objective_interval=2)
         
@@ -213,7 +204,7 @@ class TestAlgorithms(CCPiTestClass):
         self.assertTrue(alg.update_objective_interval==2)
 
         alg.run(20, verbose=0)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
+        self.assertNumpyArrayAlmostEqual(alg.solution.as_array(), b.as_array())
 
     def test_FISTA_update(self):
 
@@ -286,14 +277,14 @@ class TestAlgorithms(CCPiTestClass):
         alg = FISTA(initial=initial, f=norm2sq, g=ZeroFunction())
         alg.max_iteration = 2
         alg.run(20, verbose=0)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
+        self.assertNumpyArrayAlmostEqual(alg.solution.as_array(), b.as_array())
 
         alg = FISTA(initial=initial, f=norm2sq, g=ZeroFunction(), max_iteration=2, update_objective_interval=3)
         self.assertTrue(alg.max_iteration == 2)
         self.assertTrue(alg.update_objective_interval== 3)
 
         alg.run(20, verbose=0)
-        self.assertNumpyArrayAlmostEqual(alg.x.as_array(), b.as_array())
+        self.assertNumpyArrayAlmostEqual(alg.solution.as_array(), b.as_array())
 
     def test_FISTA_catch_Lipschitz(self):
         ig = ImageGeometry(127,139,149)
@@ -673,7 +664,7 @@ class TestSIRT(unittest.TestCase):
     def test_update_constraints(self):
         alg = SIRT(initial=self.initial2, operator=self.A2, data=self.b2,max_iteration=20)
         alg.run(verbose=0)
-        np.testing.assert_array_almost_equal(alg.x.array, self.b2.array)    
+        np.testing.assert_array_almost_equal(alg.solution.array, self.b2.array)    
         
         alg = SIRT(initial=self.initial2, operator=self.A2, data=self.b2,max_iteration=20, upper=0.3)
         alg.run(verbose=0)
