@@ -46,7 +46,6 @@ class ApproximateGradientSumFunction(SumFunction):
         else:
             self.selection = selection
 
-        self.functions_used = [] 
         self.data_passes = data_passes
         self.initial = initial
         self._dask = dask
@@ -60,7 +59,7 @@ class ApproximateGradientSumFunction(SumFunction):
             self._dask_available = False
                 
         super(ApproximateGradientSumFunction, self).__init__(*functions) 
-
+       
     @property
     def dask(self):
         return self._dask
@@ -71,6 +70,7 @@ class ApproximateGradientSumFunction(SumFunction):
             self._dask = value
         else:
             print("Dask is not installed.")
+           
 
     def __call__(self, x):
         if self.dask:
@@ -127,8 +127,6 @@ class ApproximateGradientSumFunction(SumFunction):
         """ Selects the next function or the next batch of functions from the list of :code:`functions` using the :code:`selection`."""        
         self.function_num = next(self.selection)
         
-        # append each function used at this iteration
-        self.functions_used.append(self.function_num)
 
     def allocate_memory(self):
 
@@ -141,5 +139,7 @@ class ApproximateGradientSumFunction(SumFunction):
     def free_memory(self):
 
         raise NotImplementedError
+
+        
 
 
