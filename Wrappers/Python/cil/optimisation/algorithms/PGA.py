@@ -44,6 +44,9 @@ class PGA(Algorithm):
         self.f = f
         self.g = g
 
+        if hasattr(self.f, "store_gradients"):
+            self.f.initial = self.initial
+
         # set step_size
         self.set_step_size(step_size=step_size)
         
