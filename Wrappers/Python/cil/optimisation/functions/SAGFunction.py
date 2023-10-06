@@ -1,4 +1,5 @@
 from cil.optimisation.functions import ApproximateGradientSumFunction
+import numpy as np
 
 class SAGFunction(ApproximateGradientSumFunction):
 
@@ -8,15 +9,13 @@ class SAGFunction(ApproximateGradientSumFunction):
 
     """
 
-    def __init__(self, functions, selection=None, initial=None):            
+    def __init__(self, functions, selection=None, store_gradients=False, initial=None):            
  
         super(SAGFunction, self).__init__(functions, selection = selection, data_passes=[0], initial=initial)
 
         # flag for memory allocation
         self.memory_allocated = False
-
-        if self.initial is not None:
-            self.data_passes = [1]
+        self.store_gradients = store_gradients        
 
     def approximate_gradient(self, function_num, x, out=None):
 
@@ -64,15 +63,22 @@ class SAGFunction(ApproximateGradientSumFunction):
         The initial point is 0 by default.
         """
 
-        if self.initial is None:
-            self.initial = x*0.
+        if self.store_gradients:
+            if self.initial is None:
+                raise ValueError(" Cannot allocate gradients. initial is required, {} passed".format(self.initial))
+            self.list_stored_gradients = [fi.gradient(self.initial) for fi in self.functions]
 
-        self.list_stored_gradients = [ fi.gradient(self.initial) for fi in self.functions]
-        self.full_gradient_at_iterate =  sum(self.list_stored_gradients)            
-    
+            # np.sum faster with np array, sum is not implemented in SIRF
+            self.full_gradient_at_iterate =  np.sum(self.list_stored_gradients) 
+            self.data_passes = [1]                   
+        else:
+            # TODO x is used due to missing domain attribute in function class
+            self.list_stored_gradients = [x*0.]*len(self.functions)
+            self.full_gradient_at_iterate =  x*0.
+
         self.stoch_grad_at_iterate = x * 0.0 # for CIL/SIRF compatibility
         self.stochastic_grad_difference = x * 0.0 # for CIL/SIRF compatibility
-        self.memory_allocated = True
+        self.memory_allocated = True            
     
     def free_memory(self):
         """ Resets the memory from subset gradients and full gradient.
