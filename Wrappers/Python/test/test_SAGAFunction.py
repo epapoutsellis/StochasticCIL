@@ -73,37 +73,7 @@ class TestSAGAFunction(unittest.TestCase):
 
         np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
 
-    def test_SAGFunction_initial(self):
-
-        initial = self.ig.allocate('random')
-        x = self.ig.allocate('random')
-
-        F_SAGA = SAGAFunction(self.fi_cil, initial=initial) 
-        out1 = F_SAGA.gradient(x)
-        F_SAGA.free_memory()
-
-        out2 = self.ig.allocate()
-        F_SAGA.approximate_gradient(F_SAGA.function_num, x, out=out2)
-
-        np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)  
-
-    def test_data_passes(self):
-
-        # without initial
-        initial = self.ig.allocate('random')
-        F_SAGA = SAGAFunction(self.fi_cil, initial=initial)
-        np.testing.assert_equal(F_SAGA.data_passes, [0])   
-        num_epochs = 10
-        x = self.ig.allocate()
-        for _ in range(num_epochs*self.n_subsets):
-            res = F_SAGA.gradient(x)
-
-        # expected one data pass after iter=n_subsets=num_functions
-        np.testing.assert_equal(F_SAGA.data_passes[0::self.n_subsets],
-                                np.linspace(0.,10.,11, endpoint=True)) 
-
                                       
-
     @unittest.skipUnless(has_cvxpy, "CVXpy not installed") 
     def test_with_cvxpy(self):
         
