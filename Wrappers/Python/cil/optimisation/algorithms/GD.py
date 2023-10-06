@@ -45,7 +45,15 @@ class GD(PGA):
         self._gradient_step(self.x_old, out=self.x)
         self.x_old.sapyb(1.0, self.x, -self.step_size, out=self.x_old) 
 
-  
+    def get_output(self):
+        # No need to apply _update_previous_solution at the end of the update method
+        # x_old is the current iterate
+        return self.x_old        
+ 
+
+
+
+           
 
 # import numpy
 # from cil.optimisation.algorithms import Algorithm

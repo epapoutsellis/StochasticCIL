@@ -67,7 +67,7 @@ class MetricsDiagnostics(AlgorithmDiagnostics):
 
     def __call__(self, algo):
 
-        test_image_array = algo.x.as_array()
+        test_image_array = algo.get_output().as_array()
             
         for metric_name, metric_func in self.metrics_dict.items():
 

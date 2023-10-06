@@ -33,11 +33,16 @@ class ISTA(PGA):
         
         self._gradient_step(self.x_old, out=self.x)
         self.x_old.sapyb(1., self.x, -self.step_size, out=self.x_old)
-        self.g.proximal(self.x_old, self.step_size, out=self.x)            
-
+        self.g.proximal(self.x_old, self.step_size, out=self.x) 
+        
     def _update_previous_solution(self):  
         """ Swaps the references to current and previous solution based on the :func:`~Algorithm.update_previous_solution` of the base class :class:`Algorithm`.
         """        
         tmp = self.x_old
         self.x_old = self.x
-        self.x = tmp
+        self.x = tmp   
+
+    def get_output(self):
+        # references are swaped at the end of the update method
+        # x_old is the current iterate
+        return self.x_old         

@@ -53,18 +53,10 @@ class PGA(Algorithm):
               
 
     def update(self):
-
         raise NotImplementedError
       
-
-    def get_output(self):
-        " Returns the current solution. "
-        return self.x_old
-        
     def update_objective(self):
         """ Updates the objective
-
         .. math:: f(x) + g(x)
-
         """
-        self.loss.append( self.f(self.x_old) + self.g(self.x_old) )
+        self.loss.append( self.f(self.get_output()) + self.g(self.get_output()) )       
