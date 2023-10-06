@@ -112,6 +112,12 @@ class Function(object):
         # Subtract functions
         # Add/Substract with Scalar
         # Multiply with Scalar
+        
+    @staticmethod
+    def isfunction(function):
+        attrs = ["__call__", "gradient"] # cover cases for SIRF(Prior)Functions, and RegTk
+        return all(hasattr(function, attr) for attr in attrs)
+
     
     def __add__(self, other):
         
@@ -122,7 +128,7 @@ class Function(object):
 
         """
         
-        if isinstance(other, Function):
+        if isinstance(other, Function) or self.isfunction(other):
             return SumFunction(self, other)
         elif isinstance(other, (SumScalarFunction, ConstantFunction, Number)):
             return SumScalarFunction(self, other)
