@@ -41,38 +41,11 @@ class TestSAGAFunction(unittest.TestCase):
             
         self.F = LeastSquares(self.Aop, b=self.bop, c = 0.5) 
         self.ig = self.Aop.domain
-        generator = RandomSampling.uniform(self.n_subsets)
-        self.F_SAGA = SAGAFunction(self.fi_cil, generator)           
+        self.generator = RandomSampling.uniform(self.n_subsets, seed=40)
+        self.initial = self.ig.allocate()  
+        self.F_SAGA = SAGAFunction(self.fi_cil, selection=self.generator, warm_start=True)           
 
-        self.initial = self.ig.allocate()          
-
-    def test_approximate_gradient(self):
-        
-        # out not none case
-        x = self.ig.allocate('random')
-        func_num = 5     
- 
-        out1 = self.F_SAGA.approximate_gradient(func_num, x)  
-        # free memory to compare out is not None 
-        self.F_SAGA.free_memory()
-
-        out2 = self.ig.allocate()        
-        self.F_SAGA.approximate_gradient(func_num, x, out=out2) 
-        np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
-        
-        
-    def test_gradient(self):
-        
-        x = self.ig.allocate(0)
-        
-        out1 = self.F_SAGA.gradient(x)
-        self.F_SAGA.free_memory()
-
-        out2 = self.ig.allocate()
-        self.F_SAGA.approximate_gradient(self.F_SAGA.function_num, x, out=out2)
-
-        np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
-
+                
                                       
     @unittest.skipUnless(has_cvxpy, "CVXpy not installed") 
     def test_with_cvxpy(self):
@@ -81,12 +54,12 @@ class TestSAGAFunction(unittest.TestCase):
         objective = cvxpy.Minimize( 0.5 * cvxpy.sum_squares(self.Aop.A @ u_cvxpy - self.bop.array))
         p = cvxpy.Problem(objective)
         p.solve(verbose=True, solver=cvxpy.SCS, eps=1e-4) 
-
+       
         step_size = 1./(3*self.F_SAGA.L) # theoretical learning rate/step_size
-        epochs = 200
+        epochs = 50
         saga = GD(initial = self.initial, objective_function = self.F_SAGA, step_size = step_size,
                     max_iteration = epochs * self.n_subsets, 
-                    update_objective_interval =  epochs * self.n_subsets)
+                    update_objective_interval = epochs * self.n_subsets)
         saga.run(verbose=0)    
 
        

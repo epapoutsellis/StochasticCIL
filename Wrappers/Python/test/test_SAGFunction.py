@@ -42,23 +42,28 @@ class TestSAGFunction(unittest.TestCase):
             
         self.F = LeastSquares(self.Aop, b=self.bop, c = 0.5) 
         self.ig = self.Aop.domain
-        generator = RandomSampling.uniform(self.n_subsets, seed=40)
-        self.F_SAG = SAGFunction(self.fi_cil, generator)           
+        self.generator = RandomSampling.uniform(self.n_subsets, seed=40)                   
+        self.initial = self.ig.allocate() 
 
-        self.initial = self.ig.allocate()   
+        # initial required to run the gradient, approximate gradient functions
+        # when used inside an algorithm, stochastic initial := algo initial  
+        # F_SAG = SAGFunction(self.fi_cil, self.generator) 
 
     def test_approximate_gradient(self):
         
         # out not none case
         x = self.ig.allocate('random')
         func_num = 5     
- 
-        out1 = self.F_SAG.approximate_gradient(func_num, x)  
+        F_SAG = SAGFunction(self.fi_cil, self.generator)
+        F_SAG.initial = self.initial
+        out1 = F_SAG.approximate_gradient(func_num, x)  
         # free memory to compare out is not None 
-        self.F_SAG.free_memory()
+        F_SAG.free_memory()
 
-        out2 = self.ig.allocate()        
-        self.F_SAG.approximate_gradient(func_num, x, out=out2) 
+        out2 = self.ig.allocate() 
+        F_SAG = SAGFunction(self.fi_cil, self.generator)
+        F_SAG.initial = self.initial               
+        F_SAG.approximate_gradient(func_num, x, out=out2) 
         np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
         
         
@@ -67,73 +72,78 @@ class TestSAGFunction(unittest.TestCase):
         x = self.ig.allocate(0)
         
         # function_num will be selected randomly, we use it to compute the in-place case below
-        out1 = self.F_SAG.gradient(x)
-        self.F_SAG.free_memory()
+        F_SAG = SAGFunction(self.fi_cil, self.generator)
+        F_SAG.initial = self.initial
+        out1 = F_SAG.gradient(x)
+        num_func = F_SAG.function_num        
+        F_SAG.free_memory()
 
         out2 = self.ig.allocate()
-        self.F_SAG.approximate_gradient(self.F_SAG.function_num, x, out=out2)
+        F_SAG = SAGFunction(self.fi_cil, self.generator)
+        F_SAG.initial = self.initial        
+        F_SAG.approximate_gradient(num_func, x, out=out2)
 
         np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
 
-    def test_SAGFunction_initial_and_store_gradients_and_data_passes(self):
-
+    def test_SAGFunction_initial_warm_default_values(self):
         # check initial is None, default
         F_SAG = SAGFunction(self.fi_cil)
-        np.testing.assert_equal(F_SAG.initial, None)
-        self.F_SAG.free_memory()   
+        np.testing.assert_equal(F_SAG.initial, None) 
+        np.testing.assert_equal(F_SAG.warm_start, True)   
 
-        # check fixed value for initial
-        F_SAG = SAGFunction(self.fi_cil, initial=self.initial)
-        np.testing.assert_allclose(F_SAG.initial.array, self.initial.array) 
+              
+    def test_SAGFunction_allocate_memory_warm_false(self):
+
+        # check no warm_start
+        F_SAG = SAGFunction(self.fi_cil, warm_start=False)
+        x = self.ig.allocate()
+        F_SAG.initial = x     
+        F_SAG.allocate_memory(x)
+        for i in range(len(self.fi_cil)):
+            np.testing.assert_equal(F_SAG.list_stored_gradients[i].array, (x*0.).array)
+        np.testing.assert_equal(F_SAG.full_gradient_at_iterate.array, (x*0.).array)    
         F_SAG.free_memory() 
 
-        # check allocate memory using initial. Initial is used to allocate 0s
-        F_SAG = SAGFunction(self.fi_cil)
-        F_SAG.allocate_memory(self.initial)
-        for i in range(len(self.fi_cil)):
-            np.testing.assert_equal(F_SAG.list_stored_gradients[i].array, self.initial.array)
-        F_SAG.free_memory()
+    def test_SAGFunction_allocate_memory_warm_true(self):
 
-        # check allocate memory using initial. but with store gradients=True
+        # check with warm start, initial is None and will take a value by algorithm
+        F_SAG = SAGFunction(self.fi_cil, warm_start=True)
         x = self.ig.allocate("random")
-        F_SAG = SAGFunction(self.fi_cil, initial=x, store_gradients=True)
+        F_SAG.initial = x # forced by the algorithm used
         F_SAG.allocate_memory(x)
+
+        # check data passes since full gradient is computed
         np.testing.assert_equal(F_SAG.data_passes, [1]) 
+
         for i in range(len(self.fi_cil)):
-            np.testing.assert_equal(F_SAG.list_stored_gradients[i].array, F_SAG.functions[i].gradient(x).array)
-        F_SAG.free_memory()  
-
-        # check allocate memory with store gradients=False and without initial, will raise Error
-        x = self.ig.allocate("random")
-        F_SAG = SAGFunction(self.fi_cil, store_gradients=True)
-        with self.assertRaises(ValueError):
-            F_SAG.allocate_memory(x)
-        F_SAG.free_memory()
-
-        F_SAG = SAGFunction(self.fi_cil) # store_gradients = False #default
-        np.testing.assert_equal(F_SAG.data_passes, [0])            
-                       
+            np.testing.assert_equal(F_SAG.list_stored_gradients[i].array, self.fi_cil[i].gradient(x).array)
+        np.testing.assert_equal(F_SAG.full_gradient_at_iterate.array, F_SAG.full_gradient(x).array)    
+        F_SAG.free_memory()               
+         
+    def test_SAGFunction_allocate_memory(self):                       
         num_epochs = 10
         x = self.ig.allocate()
+        F_SAG = SAGFunction(self.fi_cil, warm_start=False)
+        F_SAG.initial = x
         for _ in range(num_epochs*self.n_subsets):
-            res = self.F_SAG.gradient(x)
+            res = F_SAG.gradient(x)
 
         # expected one data pass after iter=n_subsets=num_functions
-        np.testing.assert_equal(self.F_SAG.data_passes[0::self.n_subsets],
+        np.testing.assert_equal(F_SAG.data_passes[0::self.n_subsets],
                                 np.linspace(0.,10.,11, endpoint=True)) 
 
 
         # with initial
         initial = self.ig.allocate('random')
-        F_SAG = SAGFunction(self.fi_cil, initial = initial, store_gradients=True)  
+        F_SAG = SAGFunction(self.fi_cil, warm_start=True)
+        F_SAG.initial = initial  
         num_epochs = 10
         x = self.ig.allocate()
-        tmp_data_passes = [1.]
+        tmp_data_passes = [1]
         for _ in range(num_epochs*self.n_subsets):
             res = F_SAG.gradient(x)
             # in the first step gradient --calls--> apporximate gradient --calls-->  allocate memory
             # store_gradients is True, so full gradient is computed
-            np.testing.assert_equal(F_SAG.data_passes[0], 1) 
             tmp_data_passes.append(round(tmp_data_passes[-1] + 1./self.n_subsets,2))
 
         # expected one data pass after iter=n_subsets=num_functions
@@ -148,15 +158,16 @@ class TestSAGFunction(unittest.TestCase):
         p = cvxpy.Problem(objective)
         p.solve(verbose=True, solver=cvxpy.SCS, eps=1e-4) 
 
-        step_size = 1./self.F_SAG.L
-        epochs = 100
-        sag = GD(initial = self.initial, objective_function = self.F_SAG, step_size = step_size,
+        F_SAG = SAGFunction(self.fi_cil)
+        step_size = 1./(F_SAG.L)
+        epochs = 50
+        sag = GD(initial = self.initial, objective_function = F_SAG, step_size = step_size,
                     max_iteration = epochs * self.n_subsets, 
-                    update_objective_interval =  epochs * self.n_subsets)
+                    update_objective_interval = epochs * self.n_subsets)
         sag.run(verbose=0)    
 
+        np.testing.assert_allclose(F_SAG.initial.array, sag.initial.array, atol=1e-1)
         np.testing.assert_allclose(p.value, sag.objective[-1], atol=1e-1)
-
         np.testing.assert_allclose(u_cvxpy.value, sag.solution.array, atol=1e-1)
 
 

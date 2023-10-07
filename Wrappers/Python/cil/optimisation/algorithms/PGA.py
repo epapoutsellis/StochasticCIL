@@ -44,8 +44,12 @@ class PGA(Algorithm):
         self.f = f
         self.g = g
 
-        if hasattr(self.f, "store_gradients"):
-            self.f.initial = self.initial
+        # for stochastic estimators --> see SAGFunction.py
+        # if warm_start=True, the initial of the algorithm is used
+        # to compute and store stochastic gradients (if needed, e.g., (L)SVRG)
+        if hasattr(self.f, "warm_start"):
+            if self.f.warm_start:
+                self.f.initial = self.initial.copy()
 
         # set step_size
         self.set_step_size(step_size=step_size)

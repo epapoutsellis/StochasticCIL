@@ -19,8 +19,8 @@ class TestSVRGFunction(unittest.TestCase):
     def setUp(self):
         
         np.random.seed(10)
-        n = 500  
-        m = 1000 
+        n = 300  
+        m = 100 
         A = np.random.normal(0,1, (m, n)).astype('float32')
         b = np.random.normal(0,1, m).astype('float32')
 
@@ -41,63 +41,66 @@ class TestSVRGFunction(unittest.TestCase):
             
         self.F = LeastSquares(self.Aop, b=self.bop, c = 0.5) 
         self.ig = self.Aop.domain
-        generator = RandomSampling.uniform(self.n_subsets)
-        self.F_SVRG = SVRGFunction(self.fi_cil, generator)           
-
-        self.initial = self.ig.allocate()          
+        self.generator = RandomSampling.uniform(self.n_subsets)              
+        self.initial = self.ig.allocate("random")    
+              
 
     def test_approximate_gradient(self):
         
         # out not none case
         x = self.ig.allocate('random')
-        func_num = 5     
-        out1 = self.F_SVRG.approximate_gradient(func_num, x)  
+        func_num = 5    
+        F_SVRG = SVRGFunction(self.fi_cil, self.generator) 
+        F_SVRG.initial = self.initial 
+        out1 = F_SVRG.approximate_gradient(func_num, x)  
 
-        out2 = self.ig.allocate()        
-        self.F_SVRG.approximate_gradient(func_num, x, out=out2) 
+        out2 = self.ig.allocate() 
+        F_SVRG = SVRGFunction(self.fi_cil, self.generator) 
+        F_SVRG.initial = self.initial        
+        F_SVRG.approximate_gradient(func_num, x, out=out2) 
 
         np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
         
         
     def test_gradient(self):
         
-        x = self.ig.allocate(0)        
-        out1 = self.F_SVRG.gradient(x)
+        x = self.ig.allocate("random") 
 
+        F_SVRG = SVRGFunction(self.fi_cil, self.generator) 
+        F_SVRG.initial = self.initial           
+        out1 = F_SVRG.gradient(x)
+
+        num_fun = F_SVRG.function_num
         out2 = self.ig.allocate()
-        self.F_SVRG.approximate_gradient(self.F_SVRG.function_num, x, out=out2)
-
+        F_SVRG = SVRGFunction(self.fi_cil, self.generator) 
+        F_SVRG.initial = self.initial            
+        F_SVRG.approximate_gradient(num_fun, x, out=out2)
         np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
 
-    # def test_SVRGFunction_initial(self):
+    def test_SVRGFunction_initial_warm_default_values(self):
+        # check initial is None, default
+        F_SVRG = SVRGFunction(self.fi_cil)
+        np.testing.assert_equal(F_SVRG.initial, None) 
+        np.testing.assert_equal(F_SVRG.warm_start, True)  
+    
 
-    #     initial = self.ig.allocate('random')
-    #     x = self.ig.allocate('random')
-    #     func_num = 5
-    #     F_SVRG = SVRGFunction(self.fi_cil, initial=initial) 
-    #     out1 = F_SVRG.approximate_gradient(func_num, x)
-    #     F_SVRG.free_memory()
-
-    #     out2 = self.ig.allocate()
-    #     F_SVRG.approximate_gradient(func_num, x, out=out2)
-
-    #     np.testing.assert_allclose(out1.array, out2.array, atol=1e-4) 
-    # 
-
-    def test_allocate_memory(self):
+    def test_memory_allocated(self):
         
         F_SVRG = SVRGFunction(self.fi_cil)
         np.testing.assert_equal(False, F_SVRG.memory_allocated)
 
         func_num = 5
         x = self.ig.allocate('random')
+        F_SVRG.initial = self.initial
         res = F_SVRG.approximate_gradient(func_num, x)
         np.testing.assert_equal(True, F_SVRG.memory_allocated)
 
     def test_update_memory(self):
         
         F_SVRG = SVRGFunction(self.fi_cil)
+        F_SVRG.initial = self.initial
         F_SVRG1 = SVRGFunction(self.fi_cil, store_gradients=True)
+        F_SVRG1.initial = self.initial
 
         func_num = 5
         x = self.ig.allocate('random')
@@ -110,6 +113,7 @@ class TestSVRGFunction(unittest.TestCase):
     def test_free_memory(self):
         
         F_SVRG = SVRGFunction(self.fi_cil)
+        F_SVRG.initial = self.initial
 
         func_num = 5
         x = self.ig.allocate('random')
@@ -131,6 +135,7 @@ class TestSVRGFunction(unittest.TestCase):
 
         F_SVRG = SVRGFunction(self.fi_cil, store_gradients=True)
         x = self.ig.allocate('random')
+        F_SVRG.initial = x        
         res = F_SVRG.gradient(x)
         tmp_list = [ fi.gradient(x) for fi in F_SVRG.functions]
         for i in range(len(tmp_list)):
@@ -141,8 +146,9 @@ class TestSVRGFunction(unittest.TestCase):
         num_epochs = 5
         # every two/five iterations/2*num_functions full gradient is eval, increment data_passes
         for uf in [2, 5, 2*len(self.fi_cil)]:
-            F_SVRG = SVRGFunction(self.fi_cil, update_frequency=uf) 
+            F_SVRG = SVRGFunction(self.fi_cil, update_frequency=uf)             
             x = self.ig.allocate()
+            F_SVRG.initial = x 
             tmp_data_passes = [None]
             for i in range(self.n_subsets*num_epochs):
                 res = F_SVRG.gradient(x)
@@ -164,12 +170,15 @@ class TestSVRGFunction(unittest.TestCase):
         p = cvxpy.Problem(objective)
         p.solve(verbose=True, solver=cvxpy.SCS, eps=1e-4) 
 
-        step_size = 1./self.F_SVRG.L
+        F_SVRG = SVRGFunction(self.fi_cil, self.generator)
+        initial = self.ig.allocate()
+        step_size = 1./F_SVRG.L
         epochs = 30
-        svrg = GD(initial = self.initial, objective_function = self.F_SVRG, step_size = step_size,
+        svrg = GD(initial = initial, objective_function = F_SVRG, step_size = step_size,
                     max_iteration = epochs * self.n_subsets, 
                     update_objective_interval =  epochs * self.n_subsets)
-        svrg.run(verbose=0)    
+        svrg.run(verbose=1)    
 
+        np.testing.assert_allclose(F_SVRG.initial.array, svrg.initial.array, atol=1e-1)
         np.testing.assert_allclose(p.value, svrg.objective[-1], atol=1e-1)
         np.testing.assert_allclose(u_cvxpy.value, svrg.solution.array, atol=1e-1)

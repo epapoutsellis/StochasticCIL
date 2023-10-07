@@ -9,14 +9,10 @@ class SAGAFunction(SAGFunction):
     """
 
 
-    def __init__(self, functions, selection=None, initial=None):            
+    def __init__(self, functions, selection=None, warm_start=True):            
  
-        super(SAGAFunction, self).__init__(functions, selection = selection, initial=initial)
-
-        # flag for memory allocation
-        self.memory_allocated = False           
-
-        self.data_passes = [0.]               
+        super(SAGAFunction, self).__init__(functions, selection = selection, warm_start=warm_start)
+                                   
 
     def approximate_gradient(self, function_num, x, out=None):
 

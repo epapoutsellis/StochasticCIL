@@ -9,13 +9,19 @@ class SAGFunction(ApproximateGradientSumFunction):
 
     """
 
-    def __init__(self, functions, selection=None, store_gradients=False, initial=None):            
+    def __init__(self, functions, selection=None,  warm_start=True):            
  
-        super(SAGFunction, self).__init__(functions, selection = selection, data_passes=[0], initial=initial)
+        super(SAGFunction, self).__init__(functions, selection = selection, data_passes=[0])
+
+        # flag to initialise and store the stochastic gradients
+        # in the case of warm start: the initial of the algorithm is used
+        # otherwise 0's are used for the list_store_gradients and full_gradient_at iterate
+        self.warm_start = warm_start
+        self.initial = None
 
         # flag for memory allocation
-        self.memory_allocated = False
-        self.store_gradients = store_gradients        
+        self.memory_allocated = False 
+  
 
     def approximate_gradient(self, function_num, x, out=None):
 
@@ -62,23 +68,20 @@ class SAGFunction(ApproximateGradientSumFunction):
         r"""Initialize subset gradients :math:`v_{i}` and full gradient that are stored in memory.
         The initial point is 0 by default.
         """
-
-        if self.store_gradients:
-            if self.initial is None:
-                raise ValueError(" Cannot allocate gradients. initial is required, {} passed".format(self.initial))
+        
+        if self.warm_start:
             self.list_stored_gradients = [fi.gradient(self.initial) for fi in self.functions]
-
-            # np.sum faster with np array, sum is not implemented in SIRF
-            self.full_gradient_at_iterate =  np.sum(self.list_stored_gradients) 
-            self.data_passes = [1]                   
+            self.full_gradient_at_iterate =  np.sum(self.list_stored_gradients)   
+            self.data_passes = [1]             
         else:
-            # TODO x is used due to missing domain attribute in function class
             self.list_stored_gradients = [x*0.]*len(self.functions)
-            self.full_gradient_at_iterate =  x*0.
-
+            self.full_gradient_at_iterate =  x*0            
+ 
+   
         self.stoch_grad_at_iterate = x * 0.0 # for CIL/SIRF compatibility
         self.stochastic_grad_difference = x * 0.0 # for CIL/SIRF compatibility
-        self.memory_allocated = True            
+        self.memory_allocated = True          
+        
     
     def free_memory(self):
         """ Resets the memory from subset gradients and full gradient.
@@ -90,3 +93,28 @@ class SAGFunction(ApproximateGradientSumFunction):
             del(self.stochastic_grad_difference)
 
             self.memory_allocated = False
+
+
+    # def allocate_memory(self, x):
+
+    #     r"""Initialize subset gradients :math:`v_{i}` and full gradient that are stored in memory.
+    #     The initial point is 0 by default.
+    #     """
+
+    #     if self.store_gradients:
+    #         if self.initial is None:
+    #             raise ValueError(" Cannot allocate gradients. initial is required, {} passed".format(self.initial))
+    #         self.list_stored_gradients = [fi.gradient(self.initial) for fi in self.functions]
+
+    #         # np.sum faster with np array, sum is not implemented in SIRF
+    #         self.full_gradient_at_iterate =  np.sum(self.list_stored_gradients) 
+    #         self.data_passes = [1]                   
+    #     else:
+    #         # TODO x is used due to missing domain attribute in function class
+    #         # TODO this is not correct ???
+    #         self.list_stored_gradients = [x*0.]*len(self.functions)
+    #         self.full_gradient_at_iterate =  x*0.
+
+    #     self.stoch_grad_at_iterate = x * 0.0 # for CIL/SIRF compatibility
+    #     self.stochastic_grad_difference = x * 0.0 # for CIL/SIRF compatibility
+    #     self.memory_allocated = True              

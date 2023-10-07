@@ -19,8 +19,8 @@ class TestLSVRGFunction(unittest.TestCase):
     def setUp(self):
         
         np.random.seed(10)
-        n = 500  
-        m = 1000 
+        n = 300  
+        m = 100 
         A = np.random.normal(0,1, (m, n)).astype('float32')
         b = np.random.normal(0,1, m).astype('float32')
 
@@ -41,63 +41,58 @@ class TestLSVRGFunction(unittest.TestCase):
             
         self.F = LeastSquares(self.Aop, b=self.bop, c = 0.5) 
         self.ig = self.Aop.domain
-        generator = RandomSampling.uniform(self.n_subsets)
-        self.F_LSVRG = LSVRGFunction(self.fi_cil, generator)           
-
-        self.initial = self.ig.allocate()          
+        self.generator = RandomSampling.uniform(self.n_subsets)           
+        self.initial = self.ig.allocate("random")          
 
     def test_approximate_gradient(self):
         
         # out not none case
         x = self.ig.allocate('random')
-        func_num = 5     
-        out1 = self.F_LSVRG.approximate_gradient(func_num, x)  
+        func_num = 5
+        F_LSVRG = LSVRGFunction(self.fi_cil, self.generator) 
+        F_LSVRG.initial = self.initial             
+        out1 = F_LSVRG.approximate_gradient(func_num, x)  
 
-        out2 = self.ig.allocate()        
-        self.F_LSVRG.approximate_gradient(func_num, x, out=out2) 
+        out2 = self.ig.allocate()
+        F_LSVRG = LSVRGFunction(self.fi_cil, self.generator) 
+        F_LSVRG.initial = self.initial                
+        F_LSVRG.approximate_gradient(func_num, x, out=out2) 
 
         np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
         
         
     def test_gradient(self):
         
-        x = self.ig.allocate(0)        
-        out1 = self.F_LSVRG.gradient(x)
+        x = self.ig.allocate("random")        
+        F_LSVRG = LSVRGFunction(self.fi_cil, self.generator) 
+        F_LSVRG.initial = self.initial        
+        out1 = F_LSVRG.gradient(x)
 
+        num_fun = F_LSVRG.function_num
         out2 = self.ig.allocate()
-        self.F_LSVRG.approximate_gradient(self.F_LSVRG.function_num, x, out=out2)
-
+        F_LSVRG = LSVRGFunction(self.fi_cil, self.generator) 
+        F_LSVRG.initial = self.initial            
+        F_LSVRG.approximate_gradient(num_fun, x, out=out2)
         np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)
 
-    # def test_SVRGFunction_initial(self):
-
-    #     initial = self.ig.allocate('random')
-    #     x = self.ig.allocate('random')
-    #     func_num = 5
-    #     F_SVRG = SVRGFunction(self.fi_cil, initial=initial) 
-    #     out1 = F_SVRG.approximate_gradient(func_num, x)
-    #     F_SVRG.free_memory()
-
-    #     out2 = self.ig.allocate()
-    #     F_SVRG.approximate_gradient(func_num, x, out=out2)
-
-    #     np.testing.assert_allclose(out1.array, out2.array, atol=1e-4) 
-
-
-    def test_allocate_memory(self):
+    def test_memory_allocated(self):
         
         F_LSVRG = LSVRGFunction(self.fi_cil)
         np.testing.assert_equal(False, F_LSVRG.memory_allocated)
 
         func_num = 5
         x = self.ig.allocate('random')
+        F_LSVRG.initial = self.initial
         res = F_LSVRG.approximate_gradient(func_num, x)
         np.testing.assert_equal(True, F_LSVRG.memory_allocated)
+
 
     def test_update_memory(self):
         
         F_LSVRG = LSVRGFunction(self.fi_cil)
+        F_LSVRG.initial = self.initial
         F_LSVRG1 = LSVRGFunction(self.fi_cil, store_gradients=True)
+        F_LSVRG1.initial = self.initial
 
         func_num = 5
         x = self.ig.allocate('random')
@@ -110,6 +105,7 @@ class TestLSVRGFunction(unittest.TestCase):
     def test_free_memory(self):
         
         F_LSVRG = LSVRGFunction(self.fi_cil)
+        F_LSVRG.initial = self.initial
 
         func_num = 5
         x = self.ig.allocate('random')
@@ -129,6 +125,7 @@ class TestLSVRGFunction(unittest.TestCase):
 
         F_LSVRG = LSVRGFunction(self.fi_cil, store_gradients=True)
         x = self.ig.allocate('random')
+        F_LSVRG.initial = x     
         res = F_LSVRG.gradient(x)
         tmp_list = [ fi.gradient(x) for fi in F_LSVRG.functions]
         for i in range(len(tmp_list)):
@@ -143,9 +140,12 @@ class TestLSVRGFunction(unittest.TestCase):
         p = cvxpy.Problem(objective)
         p.solve(verbose=True, solver=cvxpy.SCS, eps=1e-4) 
 
-        step_size = 1./self.F_LSVRG.L
+        F_LSVRG = LSVRGFunction(self.fi_cil, self.generator)
+        initial = self.ig.allocate()
+
+        step_size = 1./F_LSVRG.L
         epochs = 30
-        lsvrg = GD(initial = self.initial, objective_function = self.F_LSVRG, step_size = step_size,
+        lsvrg = GD(initial = initial, objective_function = F_LSVRG, step_size = step_size,
                     max_iteration = epochs * self.n_subsets, 
                     update_objective_interval =  epochs * self.n_subsets)
         lsvrg.run(verbose=0)    

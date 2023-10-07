@@ -25,9 +25,9 @@ class SVRGFunction(ApproximateGradientSumFunction):
     
 
     def __init__(self, functions, selection=None, update_frequency = None, 
-                       store_gradients = False, initial=None):
+                       store_gradients = False):
 
-        super(SVRGFunction, self).__init__(functions, selection = selection, data_passes = [0], initial=initial)
+        super(SVRGFunction, self).__init__(functions, selection = selection, data_passes = [0])
 
         # update_frequency for SVRG
         self.update_frequency = update_frequency
@@ -48,6 +48,9 @@ class SVRGFunction(ApproximateGradientSumFunction):
         # store the number of data/functions seen during the approximate gradient method up to the self.iter of the algorithm used               
         # example: SGFunction with 10 subsets self.data_passes = [0.1,...,0.5,...,0.9,1.0, 1.1,...]                                          
         # self.data_passes = [None]
+
+        self.warm_start = True
+        self.initial = None
 
     def approximate_gradient(self, function_num, x, out=None):
 
@@ -116,8 +119,15 @@ class SVRGFunction(ApproximateGradientSumFunction):
         
         """
         Updates the memory for full gradient computation. If :code:`store_gradients==True`, the gradient of all functions is computed and stored.
-        """        
-        if self.svrg_iter==0 and self.initial:
+        """ 
+
+        # if self.svrg_iter==0:
+        #     if self.warm_start:
+        #         self.snapshot = self.initial.copy()
+        # else:
+        #     self.snapshot = x.copy()
+   
+        if self.svrg_iter==0:
             self.snapshot = self.initial.copy()
         else:
             self.snapshot = x.copy()
@@ -160,9 +170,9 @@ class SVRGFunction(ApproximateGradientSumFunction):
 
 class LSVRGFunction(SVRGFunction):
 
-    def __init__(self, functions, selection=None, update_prob=None, store_gradients = False, initial=None, seed=None):
+    def __init__(self, functions, selection=None, update_prob=None, store_gradients = False,seed=None):
 
-        super(LSVRGFunction, self).__init__(functions, selection = selection, initial=initial)
+        super(LSVRGFunction, self).__init__(functions, selection = selection, store_gradients = store_gradients)
 
         # update frequency based on probability
         self.update_prob = update_prob
