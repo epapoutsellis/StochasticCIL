@@ -4,7 +4,7 @@ def RSE(x, y, **kwargs):
     """
      root squared error between two numpy arrays
     """
-    return np.sqrt(np.sum((x - y)**2))
+    return np.sqrt(np.sum(np.abs(x - y)**2))
 
 def MSE(x,y, **kwargs):
     """ mean squared error between two numpy arrays
