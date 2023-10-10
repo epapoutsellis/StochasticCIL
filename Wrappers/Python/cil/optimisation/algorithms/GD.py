@@ -17,24 +17,38 @@
 
 from cil.optimisation.algorithms import PGA
 from cil.optimisation.functions import ZeroFunction
+from cil.optimisation.utilities import ConstantStepSize
 from numbers import Number
+
 
 class GD(PGA):
 
     def _provable_convergence_condition(self):
-        return self.step_size <= 0.99*2.0/self.f.L  
+        if isinstance(self.f.L, Number):
+            return self.initial_step_size <= 0.99*2.0/self.f.L  
+        else:
+            return False
 
     # Set default step size
     def set_step_size(self, step_size):
-        """ Set default step size.
+        
+        """ Set default step size.        
         """
+        
         if step_size is None:
             if isinstance(self.f.L, Number):
-                self._step_size = 0.99*2.0/self.f.L
+                # can converge with step size < 2./L, O(1/k) prov convergence for 1./L
+                self.initial_step_size = 0.99*2.0/self.f.L
+                self._step_size = ConstantStepSize()                
             else:
-                raise ValueError("Function f is not differentiable")
+                raise ValueError("Function f is not differentiable")                        
         else:
-            self._step_size = step_size      
+            if isinstance(step_size, Number):
+                self.initial_step_size = step_size
+                self._step_size = ConstantStepSize()  
+            else:
+                self._step_size = step_size               
+           
 
     def __init__(self, initial, objective_function, step_size = None, preconditioner = None, **kwargs):
         super(GD, self).__init__(initial=initial, f=objective_function, g=ZeroFunction(), 
@@ -43,7 +57,7 @@ class GD(PGA):
     def update(self):
 
         self._gradient_step(self.x_old, out=self.x)
-        self.x_old.sapyb(1.0, self.x, -self.step_size, out=self.x_old) 
+        self.x_old.sapyb(1.0, self.x, -self.step_size(self), out=self.x_old) 
 
     def get_output(self):
         # No need to apply _update_previous_solution at the end of the update method

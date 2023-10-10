@@ -20,6 +20,9 @@ class PGA(Algorithm):
         # step size
         self._step_size = None
 
+        # initial step size for adaptive step size
+        self.initial_step_size = None
+
         # preconditioner
         self.preconditioner = preconditioner
 

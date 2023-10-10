@@ -16,24 +16,37 @@
 from cil.optimisation.algorithms import ISTA
 import numpy as np
 from numbers import Number
+from cil.optimisation.utilities import ConstantStepSize
 
 
 class FISTA(ISTA):
 
-    def set_step_size(self, step_size):
+    def _provable_convergence_condition(self):
+        if isinstance(self.f.L, Number):
+            return self.initial_step_size <= 1.0/self.f.L  
+        else:
+            return False    
 
-        """Set the default step size
+
+    # Set default step size
+    def set_step_size(self, step_size):
+        
+        """ Set default step size.        
         """
+        
         if step_size is None:
             if isinstance(self.f.L, Number):
-                self._step_size = 1./self.f.L
+                self.initial_step_size = 1.0/self.f.L
+                self._step_size = ConstantStepSize()                
             else:
-                raise ValueError("Function f is not differentiable")
+                raise ValueError("Function f is not differentiable")                        
         else:
-            self._step_size = step_size
+            if isinstance(step_size, Number):
+                self.initial_step_size = step_size
+                self._step_size = ConstantStepSize()
+            else:
+                self._step_size = step_size  
 
-    def _provable_convergence_condition(self):
-        return self.step_size <= 1./self.f.L
 
     def __init__(self, initial, f, g, step_size = None, preconditioner=None, **kwargs):
 
@@ -44,8 +57,8 @@ class FISTA(ISTA):
     def update(self):   
         
         self._gradient_step(self.y, out=self.x)        
-        self.y.sapyb(1., self.x, -self.step_size, out=self.y)        
-        self.g.proximal(self.y, self.step_size, out=self.x)
+        self.y.sapyb(1., self.x, -self.step_size(self), out=self.y)        
+        self.g.proximal(self.y, self.step_size(self), out=self.x)
 
         self.t_old = self.t        
         self.t = 0.5*(1 + np.sqrt(1 + 4*(self.t_old**2)))        

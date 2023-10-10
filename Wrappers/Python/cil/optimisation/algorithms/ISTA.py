@@ -1,22 +1,33 @@
 from cil.optimisation.algorithms import PGA
 from numbers import Number
+from cil.optimisation.utilities import ConstantStepSize
 
 class ISTA(PGA):
 
     def _provable_convergence_condition(self):
-        return self.step_size <= 0.99*2.0/self.f.L  
+        if isinstance(self.f.L, Number):
+            return self.initial_step_size <= 0.99*2.0/self.f.L  
+        else:
+            return False        
 
     # Set default step size
     def set_step_size(self, step_size):
-        """ Set default step size.
+        
+        """ Set default step size.        
         """
+        
         if step_size is None:
             if isinstance(self.f.L, Number):
-                self._step_size = 0.99*2.0/self.f.L
+                self.initial_step_size = 0.99*2.0/self.f.L
+                self._step_size = ConstantStepSize()
             else:
-                raise ValueError("Function f is not differentiable")
+                raise ValueError("Function f is not differentiable")                        
         else:
-            self._step_size = step_size          
+            if isinstance(step_size, Number):
+                self.initial_step_size = step_size
+                self._step_size = ConstantStepSize()
+            else:
+                self._step_size = step_size           
 
     def __init__(self, initial, f, g, step_size = None, preconditioner = None, **kwargs):
 
@@ -32,8 +43,8 @@ class ISTA(PGA):
         """
         
         self._gradient_step(self.x_old, out=self.x)
-        self.x_old.sapyb(1., self.x, -self.step_size, out=self.x_old)
-        self.g.proximal(self.x_old, self.step_size, out=self.x) 
+        self.x_old.sapyb(1., self.x, -self.step_size(self), out=self.x_old)
+        self.g.proximal(self.x_old, self.step_size(self), out=self.x) 
         
     def _update_previous_solution(self):  
         """ Swaps the references to current and previous solution based on the :func:`~Algorithm.update_previous_solution` of the base class :class:`Algorithm`.
