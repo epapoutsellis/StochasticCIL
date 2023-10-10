@@ -56,9 +56,13 @@ class FISTA(ISTA):
               
     def update(self):   
         
-        self._gradient_step(self.y, out=self.x)        
-        self.y.sapyb(1., self.x, -self.step_size(self), out=self.y)        
-        self.g.proximal(self.y, self.step_size(self), out=self.x)
+        self._gradient_step(self.y, out=self.x)  
+        
+        # update step size
+        step_size =  self.step_size(self)
+
+        self.y.sapyb(1., self.x, -step_size, out=self.y)        
+        self.g.proximal(self.y, step_size, out=self.x)
 
         self.t_old = self.t        
         self.t = 0.5*(1 + np.sqrt(1 + 4*(self.t_old**2)))        
