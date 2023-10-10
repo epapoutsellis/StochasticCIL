@@ -26,10 +26,15 @@ except ImportError as ie:
 from cil.framework import DataOrder
 from cil.optimisation.functions import Function
 import numpy as np
-import warnings
+import logging
 from numbers import Number
 
 class RegulariserFunction(Function):
+
+    def __init__(self):
+
+        logging.info("CCPi-Regulariser assumes unit pixel/voxel size. Please adjust regularisation parameters accordingly.")
+
     def proximal(self, x, tau, out=None):
  
         r""" Generic proximal method for a RegulariserFunction
@@ -81,11 +86,26 @@ class RegulariserFunction(Function):
                 out = x.copy()
                 out.fill(res)
                 return out
+
     def proximal_numpy(self, xarr, tau):
         raise NotImplementedError('Please implement proximal_numpy')
 
     def check_input(self, input):
-        pass
+
+        if len(input.shape) > 3:
+            raise ValueError('{} cannot work on more than 3D. Got {}'.format(self.__class__.__name__, len(input.shape)))
+        else:
+            return True
+           
+    def __call__(self,x):
+        logging.warn("{}: the __call__ method is not implemented. Returning 0. .".format(self.__class__.__name__))
+        return 0.
+
+    def convex_conjugate(self, x):
+        logging.warn("{}: the convex_conjugate method is not implemented. Returning 0. .".format(self.__class__.__name__))
+        return 0.               
+
+
 
 class TV_Base(RegulariserFunction):
 
@@ -110,9 +130,9 @@ class TV_Base(RegulariserFunction):
 
     """
 
-    def __init__(self, strong_convexity_constant = 0):
-
+    def __init__(self, strong_convexity_constant = 0):       
         self.strong_convexity_constant = strong_convexity_constant
+        super(TV_Base, self).__init__()
 
     def __call__(self,x):
         in_arr = np.asarray(x.as_array(), dtype=np.float32, order='C')
@@ -122,9 +142,10 @@ class TV_Base(RegulariserFunction):
         else:
             return 0.5*EnergyValTV[0]
 
-    def convex_conjugate(self,x):     
+    def convex_conjugate(self, x):     
         return 0.0
 
+                
 
 class FGP_TV(TV_Base):
 
@@ -264,10 +285,7 @@ class FGP_TV(TV_Base):
         else:
             self.alpha *= scalar
             return self
-    def check_input(self, input):
-        if input.geometry.length > 3:
-            raise ValueError('{} cannot work on more than 3D. Got {}'.format(self.__class__.__name__, input.geometry.length))
-        
+
 class TGV(RegulariserFunction):
 
     def __init__(self, alpha=1, gamma=1, max_iteration=100, tolerance=0, device='cpu' , **kwargs):
@@ -295,10 +313,9 @@ class TGV(RegulariserFunction):
         if kwargs.get('iter_TGV', None) is not None:
             # raise ValueError('iter_TGV parameter has been superseded by num_iter. Use that instead.')
             self.num_iter = kwargs.get('iter_TGV')
+
+        super(TGV, self).__init__()
         
-    def __call__(self,x):
-        warnings.warn("{}: the __call__ method is not implemented. Returning NaN.".format(self.__class__.__name__))
-        return np.nan
     @property
     def gamma(self):
         return self.__gamma
@@ -328,9 +345,7 @@ class TGV(RegulariserFunction):
         # Stopping Criteria  || u^k - u^(k-1) ||_{2} / || u^{k} ||_{2}    
         return res, info
     
-    def convex_conjugate(self, x):
-        warnings.warn("{}: the convex_conjugate method is not implemented. Returning NaN.".format(self.__class__.__name__))
-        return np.nan
+
         
     def __rmul__(self, scalar):
         '''Define the multiplication with a scalar
@@ -342,14 +357,15 @@ class TGV(RegulariserFunction):
             self.alpha *= scalar
             return self
 
-        # f = TGV()
-        # f = alpha * f
 
     def check_input(self, input):
-        if len(input.dimension_labels) == 2:
+        if len(input.shape) == 2:
             self.LipshitzConstant = 12
-        elif len(input.dimension_labels) == 3:
-            self.LipshitzConstant = 16 # Vaggelis to confirm
+        elif len(input.shape) == 3:
+            if input.shape[0]==1:
+                self.LipshitzConstant = 12
+            else:
+                self.LipshitzConstant = 16
         else:
             raise ValueError('{} cannot work on more than 3D. Got {}'.format(self.__class__.__name__, input.geometry.length))
         
@@ -393,10 +409,9 @@ class FGP_dTV(RegulariserFunction):
         self.device = device # string for 'cpu' or 'gpu'
         self.reference = np.asarray(reference.as_array(), dtype=np.float32)
         self.eta = eta
+
+        super(FGP_dTV, self).__init__()
         
-    def __call__(self,x):
-        warnings.warn("{}: the __call__ method is not implemented. Returning NaN.".format(self.__class__.__name__))
-        return np.nan
 
     def proximal_numpy(self, in_arr, tau):
         res , info = regularisers.FGP_dTV(\
@@ -411,9 +426,6 @@ class FGP_dTV(RegulariserFunction):
                 self.device)
         return res, info
 
-    def convex_conjugate(self, x):
-        warnings.warn("{}: the convex_conjugate method is not implemented. Returning NaN.".format(self.__class__.__name__))
-        return np.nan
     
     def __rmul__(self, scalar):
         '''Define the multiplication with a scalar
@@ -424,10 +436,6 @@ class FGP_dTV(RegulariserFunction):
         else:
             self.alpha *= scalar
             return self
-
-    def check_input(self, input):
-        if input.geometry.length > 3:
-            raise ValueError('{} cannot work on more than 3D. Got {}'.format(self.__class__.__name__, input.geometry.length))
 
 class TNV(RegulariserFunction):
     
@@ -445,10 +453,9 @@ class TNV(RegulariserFunction):
         self.alpha = alpha
         self.max_iteration = max_iteration
         self.tolerance = tolerance
+
+        super(TNV, self).__init__()
         
-    def __call__(self,x):
-        warnings.warn("{}: the __call__ method is not implemented. Returning NaN.".format(self.__class__.__name__))
-        return np.nan
     
     def proximal_numpy(self, in_arr, tau):
         if in_arr.ndim != 3:
@@ -460,9 +467,6 @@ class TNV(RegulariserFunction):
               self.tolerance)
         return res, []
 
-    def convex_conjugate(self, x):
-        warnings.warn("{}: the convex_conjugate method is not implemented. Returning NaN.".format(self.__class__.__name__))
-        return np.nan
 
     def __rmul__(self, scalar):
         '''Define the multiplication with a scalar
@@ -475,9 +479,13 @@ class TNV(RegulariserFunction):
             return self
 
     def check_input(self, input):
-        '''TNV requires 2D+channel data with the first dimension as the channel dimension'''
-        DataOrder.check_order_for_engine('cil', input.geometry)
-        if ( input.geometry.channels == 1 ) or ( not input.geometry.length == 3) :
-            raise ValueError('TNV requires 2D+channel data. Got {}'.format(input.geometry.dimension_labels))
+        '''TNV requires channel+2D data with the first dimension as the channel dimension'''
+
+        if hasattr(input, "geometry"):
+            DataOrder.check_order_for_engine('cil', input.geometry)
+            if ( input.geometry.channels == 1 ) or ( not input.geometry.length == 3) :
+                raise ValueError('TNV requires channel+2D data, where first coordinate is the channel dimension. Got {}'.format(input.geometry.dimension_labels))
+        else:
+            logging.warn("Expected dataset should be a channel + 2D array.") 
         
 
