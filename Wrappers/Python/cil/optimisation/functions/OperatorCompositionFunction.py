@@ -16,9 +16,6 @@
 #   limitations under the License.
 
 from cil.optimisation.functions import Function
-from cil.optimisation.operators import Operator, ScaledOperator
-
-import warnings
 
 class OperatorCompositionFunction(Function):
     
@@ -46,6 +43,7 @@ class OperatorCompositionFunction(Function):
         
         self.function = function     
         self.operator = operator
+        self.allocate_operator_range = True    
 
     @property
     def L(self):
@@ -71,11 +69,14 @@ class OperatorCompositionFunction(Function):
             
         """
         
-        tmp = self.operator.range_geometry().allocate()
-        self.operator.direct(x, out=tmp)
-        self.function.gradient(tmp, out=tmp)
+        if self.allocate_operator_range:
+            self.domain = self.operator.range_geometry().allocate()
+            self.allocate_operator_range = False
+
+        self.operator.direct(x, out=self.domain)
+        self.function.gradient(self.operator_range, out=self.domain)
         if out is None:
-            return self.operator.adjoint(tmp)
+            return self.operator.adjoint(self.domain)
         else: 
-            self.operator.adjoint(tmp, out=out)
+            self.operator.adjoint(self.domain, out=out)
 
