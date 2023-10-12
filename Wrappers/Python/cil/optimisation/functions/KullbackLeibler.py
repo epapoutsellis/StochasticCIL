@@ -451,7 +451,8 @@ class KullbackLeibler_numba(KullbackLeibler):
 
         if self.mask is not None:
             kl_gradient_mask(x.as_array(), self.b.as_array(), out_np, self.eta.as_array(), self.mask)         
-        kl_gradient(x.as_array(), self.b.as_array(), out_np, self.eta.as_array())            
+        else:
+            kl_gradient(x.as_array(), self.b.as_array(), out_np, self.eta.as_array())            
         out.fill(out_np)
 
         if should_return:
