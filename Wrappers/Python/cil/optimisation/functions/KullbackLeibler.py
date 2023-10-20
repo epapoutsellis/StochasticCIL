@@ -20,7 +20,7 @@ import scipy.special
 import logging
 
 try:
-    from numba import jit, prange
+    from numba import njit, prange
     has_numba = True
 except ImportError as ie:
     has_numba = False
@@ -117,8 +117,11 @@ class KullbackLeibler(Function):
             self.b_np = self.b.as_array()
             self.eta_np = self.eta.as_array()
 
-            if mask is not None:
-                self.mask = mask.as_array()
+            if mask is not None:            
+                if mask.shape!=self.b.shape:
+                    raise ValueError("Shape of mask is not correct. {} passed, {} required".format(mask.shape, self.b.shape))    
+                self.mask_np = self.mask.as_array()
+                self.pos_ind = numpy.flatnonzero(mask.as_array())
                         
         super(KullbackLeibler, self).__init__(L = None) 
 
@@ -158,7 +161,7 @@ class KullbackLeibler_numpy(KullbackLeibler):
             x.add(self.eta,out=out)
 
         arr = out.as_array()
-        arr[arr>0] = 1 - self.b.as_array()[arr>0]/arr[arr>0]
+        arr[arr>0] = 1. - self.b.as_array()[arr>0]/arr[arr>0]
 
         out.fill(arr)
 
@@ -173,7 +176,7 @@ class KullbackLeibler_numpy(KullbackLeibler):
         
         """          
 
-        tmp = 1 - x.as_array()
+        tmp = 1. - x.as_array()
         ind = tmp>0
         xlogy = - scipy.special.xlogy(self.b.as_array()[ind], tmp[ind])
         return numpy.sum(xlogy) - self.eta.dot(x)
@@ -232,77 +235,108 @@ class KullbackLeibler_numpy(KullbackLeibler):
 
 if has_numba:
     
-    @jit(nopython=True)
-    def kl_proximal(x,b, tau, out, eta):
+    @njit(parallel=True, fastmath=True)
+    def kl_proximal(x, b, tau, out, eta):
+
+        x = x.ravel()
+        b = b.ravel()
+        eta = eta.ravel()
+        out = out.ravel()
+
         for i in prange(x.size):
-            X = x.flat[i]
-            E = eta.flat[i]
-            out.flat[i] = 0.5 *  ( 
-                ( X - E - tau ) +\
-                numpy.sqrt( (X + E - tau)**2. + \
-                    (4. * tau * b.flat[i]) 
+            out[i] = 0.5 *  ( 
+                ( x[i] - eta[i] - tau ) +\
+                numpy.sqrt( numpy.power(x[i] + eta[i] - tau,2) + \
+                    (4. * tau * b[i]) 
                 )
             )
-    @jit(nopython=True)
-    def kl_proximal_arr(x,b, tau, out, eta):
+    @njit(parallel=True, fastmath=True)
+    def kl_proximal_arr(x, b, tau, out, eta):
+
+        x = x.ravel()
+        b = b.ravel()
+        tau = tau.ravel()
+        eta = eta.ravel()
+        out = out.ravel()
+
         for i in prange(x.size):
-            t = tau.flat[i]
-            X = x.flat[i]
-            E = eta.flat[i]
-            out.flat[i] = 0.5 *  ( 
-                ( X - E - t ) +\
-                numpy.sqrt( (X + E - t)**2. + \
-                    (4. * t * b.flat[i]) 
+            out[i] = 0.5 *  ( 
+                ( x[i] - eta[i] - tau[i] ) +\
+                numpy.sqrt( numpy.power(x[i] + eta[i] - tau[i],2) + \
+                    (4. * tau[i] * b[i]) 
                 )
             )
-    @jit(nopython=True)
-    def kl_proximal_mask(x,b, tau, out, eta, mask):
+
+    @njit(parallel=True, fastmath=True)
+    def kl_proximal_mask(x,b, tau, out, eta, ind):
+
+        x = x.ravel()
+        b = b.ravel()
+        eta = eta.ravel()
+        out = out.ravel()
+
         for i in prange(x.size):
-            if mask.flat[i] > 0:
-                X = x.flat[i]
-                E = eta.flat[i]
-                out.flat[i] = 0.5 *  ( 
-                    ( X - E - tau ) +\
-                    numpy.sqrt( (X + E - tau)**2. + \
-                        (4. * tau * b.flat[i]) 
-                    )
+            out[i] = 0.5 *  ( 
+                ( x[i] - eta[i] - tau ) +\
+                numpy.sqrt( numpy.power(x[i] + eta[i] - tau,2) + \
+                    (4. * tau * b[i]) 
                 )
-    @jit(nopython=True)
-    def kl_proximal_arr_mask(x,b, tau, out, eta, mask):
-        for i in prange(x.size):
-            if mask.flat[i] > 0:
-                t = tau.flat[i]
-                X = x.flat[i]
-                E = eta.flat[i]
-                out.flat[i] = 0.5 *  ( 
-                    ( X - E - t ) +\
-                    numpy.sqrt( (X + E - t)**2. + \
-                        (4. * t * b.flat[i]) 
-                    )
+            )
+
+    @njit(parallel=True, fastmath=True)
+    def kl_proximal_arr_mask(x,b, tau, out, eta, ind):
+
+        x = x.ravel()
+        b = b.ravel()
+        tau = tau.ravel()
+        eta = eta.ravel()
+        out = out.ravel()
+
+        for i in prange(ind.size):
+            out[i] = 0.5 *  ( 
+                ( x[i] - eta[i] - tau[i] ) +\
+                numpy.sqrt( numpy.power(x[i] + eta[i] - tau[i],2) + \
+                    (4. * tau[i] * b[i]) 
                 )
-    # proximal conjugate
-    @jit(nopython=True)
-    def kl_proximal_conjugate_arr(x, b, eta, tau, out):
-        #z = x + tau * self.bnoise
-        #return 0.5*((z + 1) - ((z-1)**2 + 4 * tau * self.b).sqrt())
-        for i in prange(x.size):
-            t = tau.flat[i]
-            z = x.flat[i] + ( t * eta.flat[i] )
-            out.flat[i] = 0.5 * ( 
-                (z + 1) - numpy.sqrt((z-1)*(z-1) + 4 * t * b.flat[i])
-                )
-        
-    @jit(nopython=True)
+            )
+
+    @njit(parallel=True, fastmath=True)
     def kl_proximal_conjugate(x, b, eta, tau, out):
         #z = x + tau * self.bnoise
         #return 0.5*((z + 1) - ((z-1)**2 + 4 * tau * self.b).sqrt())
+        
+        x = x.ravel()
+        b = b.ravel()
+        eta = eta.ravel()
+        out = out.ravel()
+
         for i in prange(x.size):
-            z = x.flat[i] + ( tau * eta.flat[i] )
-            out.flat[i] = 0.5 * ( 
-                (z + 1) - numpy.sqrt((z-1)*(z-1) + 4 * tau * b.flat[i])
+            z = x[i] + ( tau * eta[i] )
+            out[i] = 0.5 * ( 
+                (z + 1) - numpy.sqrt((z-1)*(z-1) + 4 * tau * b[i])
                 )
 
-    @jit(nopython=True)
+    # proximal conjugate
+    @njit(parallel=True)
+    def kl_proximal_conjugate_arr(x, b, eta, tau, out):
+        #z = x + tau * self.bnoise
+        #return 0.5*((z + 1) - ((z-1)**2 + 4 * tau * self.b).sqrt())
+
+        x = x.ravel()
+        b = b.ravel()
+        eta = eta.ravel()
+        out = out.ravel()
+        tau = tau.ravel()     
+
+        for i in prange(x.size):            
+            z = x[i] + ( tau[i] * eta[i] )
+            out.flat[i] = 0.5 * ( 
+                (z + 1) - numpy.sqrt((z-1)*(z-1) + 4 * tau[i] * b[i])
+                )
+        
+
+
+    @njit(parallel=True)
     def kl_proximal_conjugate_arr_mask(x, b, eta, tau, out, mask):
         #z = x + tau * self.bnoise
         #return 0.5*((z + 1) - ((z-1)**2 + 4 * tau * self.b).sqrt())
@@ -314,7 +348,7 @@ if has_numba:
                     (z + 1) - numpy.sqrt((z-1)*(z-1) + 4 * t * b.flat[i])
                     )
         
-    @jit(nopython=True)
+    @njit(parallel=True)
     def kl_proximal_conjugate_mask(x, b, eta, tau, out, mask):
         #z = x + tau * self.bnoise
         #return 0.5*((z + 1) - ((z-1)**2 + 4 * tau * self.b).sqrt())
@@ -324,84 +358,108 @@ if has_numba:
                 out.flat[i] = 0.5 * ( 
                     (z + 1) - numpy.sqrt((z-1)*(z-1) + 4 * tau * b.flat[i])
                     )
+
     # gradient
-    @jit(nopython=True)
+    @njit(parallel=True)
     def kl_gradient(x, b, out, eta):
+        x = x.ravel()
+        b = b.ravel()
+        eta = eta.ravel()
+        out = out.ravel()         
         for i in prange(x.size):
-            out.flat[i] = 1 - b.flat[i]/(x.flat[i] + eta.flat[i])
-    @jit(nopython=True)
-    def kl_gradient_mask(x, b, out, eta, mask):
-        for i in prange(x.size):
-            if mask.flat[i] > 0:
-                out.flat[i] = 1 - b.flat[i]/(x.flat[i] + eta.flat[i])
+            out[i] = 1. - b[i]/(x[i] + eta[i])              
+
+    @njit(parallel=True)
+    def kl_gradient_mask(x, b, out, eta, ind):
+        x = x.ravel()
+        b = b.ravel()
+        eta = eta.ravel()
+        out = out.ravel()         
+        for i in prange(ind.size):
+            out[i] = 1. - b[i]/(x[i] + eta[i])                    
     
-    # KL divergence
-    @jit(nopython=True)
-    def kl_div(x, y, eta):
-        accumulator = 0.
+    @njit(parallel=True, fastmath=True)
+    def kl_div(x, y, eta):    
+
+        x = x.ravel()
+        y = y.ravel()
+        eta = eta.ravel()
+       
+        accumulator = 0.0
         for i in prange(x.size):
-            X = x.flat[i]
-            Y = y.flat[i] + eta.flat[i]
-            if X > 0 and Y > 0:
-                # out.flat[i] = X * numpy.log(X/Y) - X + Y
-                accumulator += X * numpy.log(X/Y) - X + Y
-            elif X == 0 and Y >= 0:
-                # out.flat[i] = Y
-                accumulator += Y
-            else:
-                # out.flat[i] = numpy.inf
-                return numpy.inf
-        return accumulator
-    @jit(nopython=True)
-    def kl_div_mask(x, y, eta, mask):
-        accumulator = 0.
-        for i in prange(x.size):
-            if mask.flat[i] > 0:
-                X = x.flat[i]
-                Y = y.flat[i] + eta.flat[i]
-                if X > 0 and Y > 0:
-                    # out.flat[i] = X * numpy.log(X/Y) - X + Y
-                    accumulator += X * numpy.log(X/Y) - X + Y
-                elif X == 0 and Y >= 0:
-                    # out.flat[i] = Y
-                    accumulator += Y
-                else:
-                    # out.flat[i] = numpy.inf
-                    return numpy.inf
-        return accumulator
+            tmp = y[i] + eta[i]
+            if x[i] > 0 and tmp > 0:
+                accumulator += x[i] * numpy.log(x[i] / tmp) - x[i] + tmp
+            elif x[i] == 0 and tmp >= 0:
+                accumulator += tmp
+            else:        
+                accumulator = numpy.inf  
+        return accumulator 
+
+    @njit(parallel=True, fastmath=True)
+    def kl_div_mask(x, y, eta, ind): 
+
+        x = x.ravel()
+        y = y.ravel()
+        eta = eta.ravel()
+
+        accumulator = 0.0
+        for i in prange(ind.size):
+            tmp = y[i] + eta[i]
+            if x[i] > 0 and tmp > 0:
+                accumulator += x[i] * numpy.log(x[i] / tmp) - x[i] + tmp
+            elif x[i] == 0 and tmp >= 0:
+                accumulator += tmp
+            else:        
+                accumulator = numpy.inf  
+        return accumulator 
 
     # convex conjugate
-    @jit(nopython=True)
+    @njit(parallel=True)
     def kl_convex_conjugate(x, b, eta):
+
+        x = x.ravel()
+        b = b.ravel()
+        eta = eta.ravel()        
+
         accumulator = 0.
         for i in prange(x.size):
-            X = b.flat[i]
-            x_f = x.flat[i]
-            Y = 1 - x_f
+            Y = 1. - x[i]
             if Y > 0:
-                if X > 0:
-                    # out.flat[i] = X * numpy.log(X/Y) - X + Y
-                    accumulator += X * numpy.log(Y)
-                # else xlogy is 0 so it doesn't add to the accumulator
-                accumulator += eta.flat[i] * x_f
+                accumulator += b[i] * numpy.log(Y)
+            accumulator += eta[i] * x[i]            
         return - accumulator
-    @jit(nopython=True)
-    def kl_convex_conjugate_mask(x, b, eta, mask):
+        
+    @njit(parallel=True)
+    def kl_convex_conjugate_mask(x, b, eta, ind):
+
+        x = x.ravel()
+        b = b.ravel()
+        eta = eta.ravel()        
+
         accumulator = 0.
-        j = 0
-        for i in prange(x.size):
-            if mask.flat[i] > 0:
-                j+=1
-                X = b.flat[i]
-                x_f = x.flat[i]
-                Y = 1 - x_f
-                if Y > 0:
-                    if X > 0:
-                        # out.flat[i] = X * numpy.log(X/Y) - X + Y
-                        accumulator += X * numpy.log(Y)
-                    # else xlogy is 0 so it doesn't add to the accumulator
-                    accumulator += eta.flat[i] * x_f
+        for i in prange(ind.size):
+            Y = 1. - x[i]
+            if Y > 0:
+                accumulator += b[i] * numpy.log(Y)
+            accumulator += eta[i] * x[i]            
         return - accumulator
+
+        # accumulator = 0.
+        # j = 0
+        # for i in prange(x.size):
+        #     if mask.flat[i] > 0:
+        #         j+=1
+        #         X = b.flat[i]
+        #         x_f = x.flat[i]
+        #         Y = 1 - x_f
+        #         if Y > 0:
+        #             if X > 0:
+        #                 # out.flat[i] = X * numpy.log(X/Y) - X + Y
+        #                 accumulator += X * numpy.log(Y)
+        #             # else xlogy is 0 so it doesn't add to the accumulator
+        #             accumulator += eta.flat[i] * x_f
+        # return - accumulator
     
     
 class KullbackLeibler_numba(KullbackLeibler):
@@ -415,7 +473,7 @@ class KullbackLeibler_numba(KullbackLeibler):
         """        
 
         if self.mask is not None:
-            return kl_div_mask(self.b_np, x.as_array(), self.eta_np, self.mask)
+            return kl_div_mask(self.b_np, x.as_array(), self.eta_np, self.pos_ind)
         return kl_div(self.b_np, x.as_array(), self.eta_np)
 
     def convex_conjugate(self, x):
@@ -427,7 +485,7 @@ class KullbackLeibler_numba(KullbackLeibler):
         """          
 
         if self.mask is not None:
-            return kl_convex_conjugate_mask(x.as_array(), self.b_np, self.eta_np, self.mask)
+            return kl_convex_conjugate_mask(x.as_array(), self.b_np, self.eta_np, self.pos_ind)
         return kl_convex_conjugate(x.as_array(), self.b_np, self.eta_np)
 
     def gradient(self, x, out = None):
@@ -444,15 +502,16 @@ class KullbackLeibler_numba(KullbackLeibler):
 
         should_return = False
         if out is None:
-            out = x * 0 
+            out = x * 0. 
             should_return = True
 
-        out_np = out.as_array() 
+        out_np = out.as_array()
 
         if self.mask is not None:
-            kl_gradient_mask(x.as_array(), self.b.as_array(), out_np, self.eta.as_array(), self.mask)         
+            kl_gradient_mask(x.as_array(), self.b_np, out_np, self.eta_np, self.pos_ind)         
         else:
-            kl_gradient(x.as_array(), self.b.as_array(), out_np, self.eta.as_array())            
+            kl_gradient(x.as_array(), self.b_np, out_np, self.eta_np)  
+
         out.fill(out_np)
 
         if should_return:
@@ -476,7 +535,7 @@ class KullbackLeibler_numba(KullbackLeibler):
         if isinstance(tau, Number):
             if self.mask is not None:
                 kl_proximal_mask(x.as_array(), self.b_np, tau, out_np, \
-                    self.eta_np, self.mask)
+                    self.eta_np, self.pos_ind)
             else:
                 kl_proximal(x.as_array(), self.b_np, tau, out_np, self.eta_np)
         else:
@@ -510,14 +569,14 @@ class KullbackLeibler_numba(KullbackLeibler):
         if isinstance(tau, Number):
             if self.mask is not None:
                 kl_proximal_conjugate_mask(x.as_array(), self.b_np, self.eta_np, \
-                    tau, out_np, self.mask)
+                    tau, out_np, self.mask_np)
             else:
                 kl_proximal_conjugate(x.as_array(), self.b_np, self.eta_np, \
                     tau, out_np)
         else:
             if self.mask is not None:
                 kl_proximal_conjugate_arr_mask(x.as_array(), self.b_np, self.eta_np, \
-                    tau.as_array(), out_np, self.mask)
+                    tau.as_array(), out_np, self.mask_np)
             else:
                 kl_proximal_conjugate_arr(x.as_array(), self.b_np, self.eta_np, \
                     tau.as_array(), out_np) 
