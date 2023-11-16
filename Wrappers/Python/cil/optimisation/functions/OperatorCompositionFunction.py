@@ -74,7 +74,7 @@ class OperatorCompositionFunction(Function):
             self.allocate_operator_range = False
 
         self.operator.direct(x, out=self.domain)
-        self.function.gradient(self.operator_range, out=self.domain)
+        self.function.gradient(self.domain, out=self.domain)
         if out is None:
             return self.operator.adjoint(self.domain)
         else: 
