@@ -1,5 +1,6 @@
 from cil.optimisation.algorithms import Algorithm
 import logging
+import inspect
 
 class PGA(Algorithm):
     
@@ -8,8 +9,13 @@ class PGA(Algorithm):
        return self._step_size
 
     def _gradient_step(self, x, out=None):
+
+        if 'out' in self.f_signature.parameters:        
+            self.f.gradient(x, out=out)
+        else:
+            # CIL/SIRF compat, out is not used for SIRF Objective & Prior Classes
+            out.fill(self.f.gradient(x))        
         
-        self.f.gradient(x, out=out)
         if self.apply_preconditioner:
             self.preconditioner.update(self)         
                            
@@ -30,6 +36,10 @@ class PGA(Algorithm):
         self.apply_preconditioner = False
         if self.preconditioner is not None:
             self.apply_preconditioner = True
+
+        # signature of f function used for CIL/SIRF compat
+        # gradient method for SIRF Objectives/Priors do not use 'out'
+        self.f_signature = inspect.signature(self.f)
             
         self.set_up(initial=initial, f=f, g=g, step_size=step_size, preconditioner = preconditioner, **kwargs)
           
@@ -48,7 +58,7 @@ class PGA(Algorithm):
         self.g = g
 
         # for stochastic estimators --> see SAGFunction.py
-        # if warm_start=True, the initial of the algorithm is used
+        # if warm_start = True, the initial of the algorithm is used
         # to compute and store stochastic gradients (if needed, e.g., (L)SVRG)
         if hasattr(self.f, "warm_start"):
             if self.f.warm_start:
