@@ -39,13 +39,13 @@ class GD(PGA):
             if isinstance(self.f.L, Number):
                 # can converge with step size < 2./L, O(1/k) prov convergence for 1./L
                 self.initial_step_size = 0.99*2.0/self.f.L
-                self._step_size = ConstantStepSize()                
+                self._step_size = ConstantStepSize(self.initial_step_size)                
             else:
                 raise ValueError("Function f is not differentiable")                        
         else:
             if isinstance(step_size, Number):
                 self.initial_step_size = step_size
-                self._step_size = ConstantStepSize()  
+                self._step_size = ConstantStepSize(self.initial_step_size)  
             else:
                 self._step_size = step_size               
            

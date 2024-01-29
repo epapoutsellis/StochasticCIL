@@ -19,13 +19,13 @@ class ISTA(PGA):
         if step_size is None:
             if isinstance(self.f.L, Number):
                 self.initial_step_size = 0.99*2.0/self.f.L
-                self._step_size = ConstantStepSize()
+                self._step_size = ConstantStepSize(self.initial_step_size)
             else:
                 raise ValueError("Function f is not differentiable")                        
         else:
             if isinstance(step_size, Number):
                 self.initial_step_size = step_size
-                self._step_size = ConstantStepSize()
+                self._step_size = ConstantStepSize(self.initial_step_size)
             else:
                 self._step_size = step_size           
 

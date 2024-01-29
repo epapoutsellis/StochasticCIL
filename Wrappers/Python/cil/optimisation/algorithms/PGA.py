@@ -39,7 +39,7 @@ class PGA(Algorithm):
 
         # signature of f function used for CIL/SIRF compat
         # gradient method for SIRF Objectives/Priors do not use 'out'
-        self.f_signature = inspect.signature(self.f)
+        self.f_signature = inspect.signature(f)
             
         self.set_up(initial=initial, f=f, g=g, step_size=step_size, preconditioner = preconditioner, **kwargs)
           
