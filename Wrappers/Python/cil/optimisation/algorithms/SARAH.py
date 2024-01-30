@@ -128,6 +128,7 @@ class SARAH(Algorithm):
         """
         
         self.approximate_gradient(self.x, out=self.gradient_estimator) 
+        self.x_old = self.x.clone()
         step_size =  self.step_size(self)
         self.x.sapyb(1., self.gradient_estimator, -step_size, out = self.x)
         self.x = self.g.proximal(self.x, step_size)       
@@ -167,8 +168,6 @@ class SARAH(Algorithm):
                 return self.stochastic_grad_difference.sapyb(self.f.num_functions, self.gradient_estimator, 1.)
             else:
                 return self.stochastic_grad_difference.sapyb(self.f.num_functions, self.gradient_estimator, 1., out=out)
-
-        self.x_old = self.x.clone()
 
     
     def update_objective(self):
