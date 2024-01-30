@@ -105,8 +105,8 @@ class SARAH(Algorithm):
         self.set_step_size(step_size=step_size)
 
         # Initialise iterates, the gradient estimator, and the temporary variables
-        self.x_old = initial.clone()
-        self.x = initial.clone()
+        self.x_old = initial.copy()
+        self.x = initial.copy()
 
         self.gradient_estimator = self.x * 0.0
         self.stoch_grad_at_iterate = self.x * 0.0
@@ -128,7 +128,7 @@ class SARAH(Algorithm):
         """
         
         self.approximate_gradient(self.x, out=self.gradient_estimator) 
-        self.x_old = self.x.clone()
+        self.x_old = self.x.copy()
         step_size =  self.step_size(self)
         self.x.sapyb(1., self.gradient_estimator, -step_size, out = self.x)
         self.x = self.g.proximal(self.x, step_size)       
