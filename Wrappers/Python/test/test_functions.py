@@ -469,7 +469,7 @@ class TestFunction(CCPiTestClass):
 
 
     def test_Rosenbrock(self):
-        f = Rosenbrock (alpha = 1, beta=100)
+        f = Rosenbrock ()
         x = VectorData(numpy.asarray([1,1]))
         assert f(x) == 0.
         numpy.testing.assert_array_almost_equal( f.gradient(x).as_array(), numpy.zeros(shape=(2,), dtype=numpy.float32))

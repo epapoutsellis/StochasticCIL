@@ -1,6 +1,8 @@
 from cil.optimisation.functions import SumFunction
 from cil.optimisation.utilities import RandomSampling
 import numbers
+import numpy as np
+
 class ApproximateGradientSumFunction(SumFunction):
 
     r"""ApproximateGradientSumFunction represents the following sum 
@@ -37,43 +39,84 @@ class ApproximateGradientSumFunction(SumFunction):
 
     """
     
-    def __init__(self, functions, selection=None):    
+    def __init__(self, functions, selection=None, data_passes=None, dask=False):    
                         
-        self.functions_used = []   
         if selection is None:
             self.selection = RandomSampling.uniform(len(functions))
         else:
             self.selection = selection
-            
-        super(ApproximateGradientSumFunction, self).__init__(*functions)            
-  
+
+        self.data_passes = data_passes
+        self._dask = dask
+
+        try:
+            import dask
+            self._dask_available = True
+            self._module = dask
+        except ImportError:
+            print("Dask is not installed.")
+            self._dask_available = False
+                
+        super(ApproximateGradientSumFunction, self).__init__(*functions) 
+       
+    @property
+    def dask(self):
+        return self._dask
+
+    @dask.setter
+    def dask(self, value):
+        if self._dask_available:
+            self._dask = value
+        else:
+            print("Dask is not installed.")
+           
+
     def __call__(self, x):
+        if self.dask:
+            return self._call_parallel(x)
+        else:
+            r""" Computes the full gradient at :code:`x`. It is the sum of all the gradients for each function. """
+        return super(ApproximateGradientSumFunction, self).__call__(x)    
 
-        r"""Returns the value of the sum of functions at :math:`x`.		
+    def _call_parallel(self, x):
+        res = []
+        for f in self.functions:
+            res.append(self._module.delayed(f)(x))
+        return sum(self._module.compute(*res))  
 
-        .. math:: \sum_{i=1}^{n}(F_{i}(x)) = (F_{1}(x) + F_{2}(x) + ... + F_{n}(x))
-
-        """
-                		
-        return super(ApproximateGradientSumFunction, self).__call__(x)      
+    def _gradient_parallel(self, x, out):
         
+        res = []
+        for f in self.functions:
+            res.append(self._module.delayed(f.gradient)(x))
+        tmp = self._module.compute(*res)
+        
+        if out is None:
+            return np.sum(tmp)
+        else:
+            out.fill(np.sum(tmp))      
+               
     def full_gradient(self, x, out=None):
 
-        r""" Computes the full gradient at :code:`x`. It is the sum of all the gradients for each function. """
-        return super(ApproximateGradientSumFunction, self).gradient(x, out=out)
+        if self.dask:
+            return self._gradient_parallel(x, out=out)            
+        else:
+            r""" Computes the full gradient at :code:`x`. It is the sum of all the gradients for each function. """
+        return super(ApproximateGradientSumFunction, self).gradient(x, out=out)                              
+       
         
     def approximate_gradient(self, function_num, x,  out=None):
 
         """ Computes the approximate gradient for each selected function at :code:`x`."""      
         raise NotImplemented
-
+        
     def gradient(self, x, out=None):
 
         """ Computes the gradient for each selected function at :code:`x`."""   
         self.next_function()
 
         # single function 
-        if isinstance(self.function_num, numbers.Number):
+        if isinstance(self.function_num, numbers.Number):         
             return self.approximate_gradient(self.function_num, x, out=out)
         else:            
             raise ValueError("Batch gradient is not implemented")
@@ -83,5 +126,19 @@ class ApproximateGradientSumFunction(SumFunction):
         """ Selects the next function or the next batch of functions from the list of :code:`functions` using the :code:`selection`."""        
         self.function_num = next(self.selection)
         
-        # append each function used at this iteration
-        self.functions_used.append(self.function_num)
+
+    def allocate_memory(self):
+
+        raise NotImplementedError
+
+    def update_memory(self):
+
+        raise NotImplementedError
+
+    def free_memory(self):
+
+        raise NotImplementedError
+
+        
+
+

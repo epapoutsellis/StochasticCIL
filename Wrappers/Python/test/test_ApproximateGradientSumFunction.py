@@ -75,7 +75,7 @@ class TestApproximateGradientSumFunction(unittest.TestCase):
             for j in range(self.n_subsets):
                 self.f_subset_sum_function.next_function()
                 choices.append(self.f_subset_sum_function.function_num)
-        self.assertTrue( choices == self.f_subset_sum_function.functions_used)          
+        self.assertTrue( choices == self.f_subset_sum_function.selection.indices_used)          
 
     def test_sampling_random_without_replacement_random_suffle(self):
 
@@ -86,7 +86,7 @@ class TestApproximateGradientSumFunction(unittest.TestCase):
             for j in range(self.n_subsets):
                 self.f_subset_sum_function_random_suffle.next_function()
                 choices.append(self.f_subset_sum_function_random_suffle.function_num)
-        self.assertTrue( choices == self.f_subset_sum_function_random_suffle.functions_used)  
+        self.assertTrue( choices == self.f_subset_sum_function_random_suffle.selection.indices_used)  
 
     def test_sampling_random_without_replacement_single_suffle(self):
 
@@ -97,4 +97,4 @@ class TestApproximateGradientSumFunction(unittest.TestCase):
             for j in range(self.n_subsets):
                 self.f_subset_sum_function_single_suffle.next_function()
                 choices.append(self.f_subset_sum_function_single_suffle.function_num)
-        self.assertTrue( choices == self.f_subset_sum_function_single_suffle.functions_used)         
+        self.assertTrue( choices == self.f_subset_sum_function_single_suffle.selection.indices_used)         
