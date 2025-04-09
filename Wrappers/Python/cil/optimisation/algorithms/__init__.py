@@ -26,4 +26,6 @@ from .ADMM import LADMM
 from .SPDHG import SPDHG
 from .PD3O import PD3O
 from .SARAH import SARAH
+from .ProxSkip import ProxSkip
+from .PDHGSkip import PDHGSkip
 
