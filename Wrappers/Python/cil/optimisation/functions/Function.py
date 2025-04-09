@@ -112,6 +112,12 @@ class Function(object):
         # Subtract functions
         # Add/Substract with Scalar
         # Multiply with Scalar
+        
+    @staticmethod
+    def isfunction(function):
+        attrs = ["__call__", "gradient"] # cover cases for SIRF(Prior)Functions, and RegTk
+        return all(hasattr(function, attr) for attr in attrs)
+
     
     def __add__(self, other):
         
@@ -122,7 +128,7 @@ class Function(object):
 
         """
         
-        if isinstance(other, Function):
+        if isinstance(other, Function) or self.isfunction(other):
             return SumFunction(self, other)
         elif isinstance(other, (SumScalarFunction, ConstantFunction, Number)):
             return SumScalarFunction(self, other)
@@ -693,47 +699,3 @@ class TranslateFunction(Function):
         
         return self.function.convex_conjugate(x) + self.center.dot(x)
 
-
-if __name__ == "__main__":
-
-    F1 = Function()
-    F2 = Function()
-
-    res1 = F1 + F2
-    print("sum two function", res1.__class__) # SumFunction
-    
-    res2 = F1 + 5
-    print("sum function and scalar",res2.__class__) # SumScalarFunction
-    
-    res3 = 5 + F1
-    print("sum scalar and function",res3.__class__) # SumScalarFunction
-
-    res4 = F1 + ConstantFunction(5)
-    print("sum function and constant",res4.__class__) # SumFunction
-
-    res4 = ConstantFunction(5) + 5
-    print("sum constant and function",res4.__class__) # SumScalarFunction
-
-    res4 = ZeroFunction() + 5
-    print("sum zero function and function",res4.__class__) # SumScalarFunction 
-
-    res3 = res1 + (F1+F2)
-    print(res3.__class__)
-
-    from cil.optimisation.functions import L2NormSquared
-    from cil.framework import ImageGeometry
-    ig = ImageGeometry(3,4)
-    f1 = L2NormSquared()
-    f2 = 0.5 * L2NormSquared(b = 1)
-    F = SumFunction(f1, f2)
-    x = ig.allocate(5)
-    F(x)   
-
-    G = SumFunction(*[f1]*4)
-    len(G.functions)
-
-    F = SumFunction(*[L2NormSquared(b=ig.allocate(i)) for i in range(10)])
-    print(len(F.functions))
-
-    # L = F.L 
-    # print(res, L)

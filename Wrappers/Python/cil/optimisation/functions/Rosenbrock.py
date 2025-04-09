@@ -17,53 +17,33 @@
 
 import numpy
 from cil.optimisation.functions import Function
-from cil.framework import VectorData, VectorGeometry
+from cil.framework import VectorData
+from scipy.optimize import rosen, rosen_der
 
 class Rosenbrock(Function):
-    r'''Rosenbrock function
+    r'''Rosenbrock function (Scipy Wrapper)
 
     .. math:: 
 
-    F(x,y) = (\alpha - x)^2 + \beta(y-x^2)^2
+    F(x,y) = (1. - x)^2 + 100.(y-x^2)^2
 
-    The function has a global minimum at .. math:: (x,y)=(\alpha, \alpha^2)
+    The function has a global minimum at .. math:: (x,y)=(1., 1.)
 
     '''
-    def __init__(self, alpha, beta):
+    def __init__(self):
         super(Rosenbrock, self).__init__()
-
-        self.alpha = alpha
-        self.beta = beta
 
     def __call__(self, x):
         if not isinstance(x, VectorData):
             raise TypeError('Rosenbrock function works on VectorData only')
-        vec = x.as_array()
-        a = (self.alpha - vec[0])
-        b = (vec[1] - (vec[0]*vec[0]))
-        return a * a + self.beta * b * b
+        vec = x.as_array()        
+        return rosen(vec)
 
     def gradient(self, x, out=None):
-        r'''Gradient of the Rosenbrock function
-        
-        .. math::
 
-        \nabla f(x,y) = \left[ 2*((x-\alpha) - 2\beta x(y-x^2)) ; 2\beta (y - x^2)  \right]
-
-        '''
-        if not isinstance(x, VectorData):
-            raise TypeError('Rosenbrock function works on VectorData only')
-
-        vec = x.as_array()
-        a = (vec[0] - self.alpha)
-        b = (vec[1] - (vec[0]*vec[0]))
-
-        res = numpy.empty_like(vec)
-        res[0] = 2 * ( a - 2 * self.beta * vec[0] * b)
-        res[1] = 2 * self.beta * b
-
+        vec = x.as_array() 
+        res = rosen_der(vec)
         if out is not None:
-            out.fill (res)
+            out.fill(res)
         else:
             return VectorData(res) 
-

@@ -137,15 +137,15 @@ class TestKullbackLeiblerNumba(unittest.TestCase):
 
         mask = ig.allocate(1)
 
-        mask.fill(0, horizontal_x=0)
+        mask.fill(0., horizontal_x=0)
 
         mask_c = ig.allocate(0)
-        mask_c.fill(1, horizontal_x=0)
+        mask_c.fill(1., horizontal_x=0)
 
         f = KullbackLeibler(b=g1, backend="numba", eta=eta)
         f_np = KullbackLeibler(b=g1, backend="numpy", eta=eta)
 
-        # mask is on vartical=0
+        # mask is on vertical=0
         # separate the u1 vertical=0
         f_mask = KullbackLeibler(b=g1.copy(), backend="numba", mask=mask.copy(), eta=eta.copy())
         f_mask_c = KullbackLeibler(b=g1.copy(), backend="numba", mask=mask_c.copy(), eta=eta.copy())

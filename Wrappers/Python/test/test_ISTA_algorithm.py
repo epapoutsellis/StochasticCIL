@@ -68,12 +68,12 @@ class TestISTA(unittest.TestCase):
 
         # ista no step-size
         ista = ISTA(initial = self.initial, f = self.f, g = self.g)  
-        np.testing.assert_equal(ista.step_size, 0.99*2./self.f.L)
+        np.testing.assert_equal(ista.step_size(ista), 0.99*2./self.f.L)
 
         # ista step-size
         tmp_step_size = 10.
         ista = ISTA(initial = self.initial, f = self.f, g = self.g, step_size=tmp_step_size)  
-        np.testing.assert_equal(ista.step_size, tmp_step_size)    
+        np.testing.assert_equal(ista.step_size(ista), tmp_step_size)    
 
         # check initialisation
         self.assertTrue( id(ista.x)!=id(ista.initial) )   

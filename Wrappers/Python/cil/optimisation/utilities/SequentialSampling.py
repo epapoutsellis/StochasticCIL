@@ -169,7 +169,7 @@ class SequentialIndex(SequentialSampling):
 
         return index_num  
 
-class SequentialBatch(SequentialIndex):
+class SequentialBatch(SequentialSampling):
             
     def __next__(self):
         

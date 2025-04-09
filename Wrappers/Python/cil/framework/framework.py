@@ -26,7 +26,7 @@ import weakref
 import logging
 
 from cil.utilities.multiprocessing import NUM_THREADS
-from cil.optimisation.utilities import RandomSampling, SequentialSampling
+from cil.optimisation.utilities import RandomSampling, SequentialSampling, HermanMeyerSampling
 # check for the extension
 
 if platform.system() == 'Linux':
@@ -3370,15 +3370,25 @@ class AcquisitionData(DataContainer):
 
         """   
 
-        if num_subsets is not None:  
-            if isinstance(method, str):
-                if method == "random":
-                    method = RandomSampling(len(self.geometry.angles), num_subsets, replace=False, seed=10)    
-                elif method == "ordered":
-                    method = SequentialSampling(len(self.geometry.angles), num_subsets)
-                else:
-                    raise ValueError('Only random and ordered splitting methods are implemented by default. Use SequentialSampling and RandomSampling for advanced splitting methods')
+        if isinstance(method, str):
+            if method not in ["random", "ordered", "herman_meyer"]:
+                raise ValueError("Available splitting methods are: method = 'random', 'ordered', or 'herman_meyer'.")
+        else:
+            if method is None:
+                raise ValueError("You can create your own splitting method, e.g., RandomSampling(num_angles, num_subsets, replace=False, seed=10) or use predefined splitting methods, e.g., 'random', 'ordered', or 'herman_meyer'. ")
 
+        if num_subsets is not None:
+            if not isinstance(num_subsets, int) or num_subsets <= 0 or num_subsets>len(self.geometry.angles):
+                raise ValueError("num_subsets must be a positive integer greater than 0 and less than the number of projections.")
+            
+        if isinstance(method, str):
+            if method == "random":
+                method = RandomSampling(len(self.geometry.angles), num_subsets, replace=False, seed=10)    
+            elif method == "ordered":
+                method = SequentialSampling(len(self.geometry.angles), num_subsets)
+            else:
+                method = HermanMeyerSampling(len(self.geometry.angles), num_subsets)                    
+          
         split_data = []
         
         if method.batch_size>1:

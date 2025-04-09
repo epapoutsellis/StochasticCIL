@@ -53,19 +53,46 @@ class TestSGFunction(unittest.TestCase):
 
         self.initial = self.ig.allocate()  
 
-    def test_gradient(self):
+    def test_approximate_gradient(self):
 
-        out1 = self.ig.allocate()
+        x = self.ig.allocate('random')        
+        func_num = 1
+
+        out1 = self.F_SG.approximate_gradient(func_num, x)
         out2 = self.ig.allocate()
+
+        self.F_SG.approximate_gradient(func_num, x, out2)
+        np.testing.assert_allclose(out1.array, out2.array, atol=1e-4)         
+
+    def test_gradient(self):
 
         x = self.ig.allocate('random')
 
-        self.F_SG.gradient(x, out=out1)
-
+        out1 = self.F_SG.gradient(x)
+        out2 = self.ig.allocate()
         self.F_SG.functions[self.F_SG.function_num].gradient(x, out=out2)
-        out2*=self.F_SG.num_functions
-
+        out2*=self.F_SG.num_functions        
         np.testing.assert_allclose(out1.array, out2.array, atol=1e-4) 
+
+        out3 = self.ig.allocate()
+        self.F_SG.gradient(x, out3)
+        out4 = self.F_SG.functions[self.F_SG.function_num].gradient(x)
+        out4*=self.F_SG.num_functions        
+        np.testing.assert_allclose(out3.array, out4.array, atol=1e-4)  
+
+    def test_data_passes(self):
+
+        np.testing.assert_equal(self.F_SG.data_passes, [0])   
+        num_epochs = 10
+        x = self.ig.allocate()
+        for _ in range(num_epochs*self.n_subsets):
+            res = self.F_SG.gradient(x)
+
+        # expected one data pass after iter=n_subsets=num_functions
+        np.testing.assert_equal(self.F_SG.data_passes[0::self.n_subsets],
+                                np.linspace(0.,10.,11, endpoint=True))  
+
+        
 
     @unittest.skipUnless(has_cvxpy, "CVXpy not installed") 
     def test_with_cvxpy(self):

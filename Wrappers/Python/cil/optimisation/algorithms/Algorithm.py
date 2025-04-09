@@ -251,9 +251,12 @@ class Algorithm(object):
         :param very_verbose: deprecated bool, useful for algorithms with primal and dual objectives (PDHG), 
                             prints to screen both primal and dual
         '''
+
         print_interval = kwargs.get('print_interval', self.update_objective_interval)
+
         if print_interval > self.update_objective_interval:
             print_interval = self.update_objective_interval
+
         if isinstance(verbose, bool):
             very_verbose = kwargs.get('very_verbose', False)
         else:
@@ -268,13 +271,27 @@ class Algorithm(object):
                 very_verbose = True
             else:
                 raise ValueError("verbose should be 0, 1 or 2. Got {}".format (verbose))
+
         if self.should_stop():
-            print ("Stop cryterion has been reached.")
+            print ("Stop criterion has been reached.")
+
         if iterations is None :
             iterations = self.max_iteration
 
+        # if callback is None --> verbose is False
+        # if is not None --> True if any callback has verbosity
+        callback_verbose = any(cb.verbose for cb in callback) if callback else False
+        
+        ######### Print Headers and Log  #########
         if verbose:
-            print (self.verbose_header(very_verbose))
+            msg_header = self.verbose_header(very_verbose)
+            if callback_verbose:
+                callback_headers = " ".join(cb.callback_header() for cb in callback if cb.verbose)
+                msg_header += callback_headers               
+            print (msg_header)
+            if self.logger:
+                self.logger.info(msg_header) 
+        #########################################
 
         if self.iteration == -1 and self.update_objective_interval>0:
             iterations+=1
@@ -286,33 +303,46 @@ class Algorithm(object):
                 self.__next__()
             except StopIteration:
                 break
+
+            # callback is executed with step=update_objective_interval
             if self.update_objective_interval > 0 and\
-                self.iteration % self.update_objective_interval == 0: 
+                self.iteration % self.update_objective_interval == 0:
+
                 if callback!=None:
-                    callback()
+                    for cb in callback:
+                        cb(self)
+
+            ######### Print Algo information per update #########
+            ######### objective interval and Log       #########
             if verbose:
+
                 if (print_interval != 0 and self.iteration % print_interval == 0) or \
                         ( self.update_objective_interval != 0 and self.iteration % self.update_objective_interval == 0):
-                    print (self.verbose_output(very_verbose))
+                    # prints objective info  
+                    msg_per_interval = self.verbose_output(very_verbose)
 
+                    if callback_verbose:
+                        callback_info_iters = " ".join(cb.callback_iteration() for cb in callback if cb.verbose)
+                        msg_per_interval += callback_info_iters
+
+                    print(msg_per_interval)
+                    if self.logger:
+                        self.logger.info(msg_per_interval)                                   
+
+        ######### Print bars '-' at the end of run algorithm and Log #########
         if verbose:
-            start = 3 # I don't understand why this
-            bars = ['-' for i in range(start+9+10+13+20)]
-            if (very_verbose):
-                bars = ['-' for i in range(start+9+10+13+13+13+15)]
-            # print a nice ---- with proper length at the end
-            # print (functools.reduce(lambda x,y: x+y, bars, ''))
-            out = "{}\n{}\n{}\n".format(functools.reduce(lambda x,y: x+y, bars, '') ,
-                                        self.verbose_output(very_verbose),
-                                        "Stop criterion has been reached.")
+            bars = ['-']*len(msg_header)
+            out = "{}\n{}\n".format(functools.reduce(lambda x,y: x+y, bars, '') ,
+                                        "Stop criterion has been reached.")            
             print (out)
             # Print to log file if desired
             if self.logger:
                 self.logger.info(out)
+                self.handler.close()
 
-                
         
 
+            
     def verbose_output(self, verbose=False):
         '''Creates a nice tabulated output'''
         timing = self.timing
@@ -326,9 +356,6 @@ class Algorithm(object):
                  "{:.3f}".format(t), 
                  self.objective_to_string(verbose)
                )
-        # Print to log file if desired
-        if self.logger:
-            self.logger.info(out)
         return out
 
     def objective_to_string(self, verbose=False):
@@ -354,6 +381,7 @@ class Algorithm(object):
             else:
                 string = "{:>20.5e}".format(el)
         return string
+        
     def verbose_header(self, verbose=False):
         el = self.get_last_objective(return_all=verbose)
         
@@ -370,17 +398,11 @@ class Algorithm(object):
                                                       'Objective', 
                                                       'Gap')
         else:
-            out = "{:>9} {:>10} {:>13} {:>20}\n".format(self.iter_string, 
+
+            out = "{:>9} {:>10} {:>13} {:>20}".format(self.iter_string, 
                                                       'Max {}'.format(self.iter_string),
-                                                      'Time/{}'.format(self.iter_string),
+                                                      'Time(s)/{}'.format(self.iter_string),
                                                       'Objective')
-            out += "{:>9} {:>10} {:>13} {:>20}".format('', 
-                                                      '',
-                                                      '[s]',
-                                                      '')
-        # Print to log file if desired
-        if self.logger:
-            self.logger.info(out)
 
         return out
 
